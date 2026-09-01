@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: agriai-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: agriai
+      POSTGRES_PASSWORD: agriai_password
+      POSTGRES_DB: agriai
+    volumes:
+      - agriai_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agriai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: agriai-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://agriai:agriai_password@db:5432/agriai
+      DEMO_MODE: "true"
+      SECRET_KEY: change-me-in-production-openssl-rand-hex-32
+      CORS_ORIGINS: http://localhost:5173
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    container_name: agriai-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: /api
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+volumes:
+  agriai_pgdata:

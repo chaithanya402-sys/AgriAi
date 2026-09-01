@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --deep-green: 145 58% 30%;
+    --fresh-green: 132 57% 45%;
+    --earth: 30 62% 40%;
+  }
+
+  * {
+    @apply border-neutral-200;
+  }
+
+  body {
+    @apply bg-white text-neutral-800 antialiased;
+    font-family: 'Inter', 'DM Sans', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans text-neutral-900;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border border-neutral-200 bg-white shadow-card;
+  }
+
+  .card-hover {
+    @apply transition-shadow duration-200 hover:shadow-card-hover;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fresh-500 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand text-white hover:bg-brand-hover;
+  }
+
+  .btn-secondary {
+    @apply btn bg-neutral-100 text-neutral-800 hover:bg-neutral-200;
+  }
+
+  .btn-outline {
+    @apply btn border border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-100;
+  }
+
+  .btn-ghost {
+    @apply btn text-neutral-600 hover:bg-neutral-100;
+  }
+
+  .input {
+    @apply w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-fresh-500 focus:outline-none focus:ring-2 focus:ring-fresh-500/30 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-neutral-700;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+}
