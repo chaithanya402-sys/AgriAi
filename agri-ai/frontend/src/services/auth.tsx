@@ -8,6 +8,8 @@ interface AuthContextValue {
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (data: { name: string; email: string; password: string; phone?: string; location?: string }) => Promise<void>
+  updateProfile: (data: { name?: string; fullName?: string; phone?: string; location?: string }) => Promise<User>
+  refreshUser: () => Promise<User | null>
   logout: () => void
 }
 
@@ -17,6 +19,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('agriai_token'))
   const [loading, setLoading] = useState<boolean>(true)
+
+  const refreshUser = async (): Promise<User | null> => {
+    const stored = localStorage.getItem('agriai_token')
+    if (!stored) {
+      setUser(null)
+      return null
+    }
+    try {
+      const me = await authApi.me()
+      setUser(me)
+      return me
+    } catch {
+      localStorage.removeItem('agriai_token')
+      setToken(null)
+      setUser(null)
+      return null
+    }
+  }
 
   useEffect(() => {
     const boot = async () => {
@@ -52,6 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(res.user)
   }
 
+  const updateProfile = async (data: { name?: string; fullName?: string; phone?: string; location?: string }) => {
+    const updated = await authApi.updateProfile(data)
+    setUser(updated)
+    return updated
+  }
+
   const logout = () => {
     localStorage.removeItem('agriai_token')
     setToken(null)
@@ -59,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, updateProfile, refreshUser, logout }}>
       {children}
     </AuthContext.Provider>
   )

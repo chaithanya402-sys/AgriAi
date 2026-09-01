@@ -11,6 +11,8 @@ class Farm(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     name = Column(String(200), nullable=False)
     location = Column(String(255), nullable=True)
+    state = Column(String(100), nullable=True)
+    district = Column(String(100), nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     total_area = Column(Float, nullable=True)  # in hectares

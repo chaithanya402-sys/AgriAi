@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { farmApi } from '@/services/api'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -13,12 +14,9 @@ import {
   Sprout,
   Wheat,
   FlaskConical,
-  TrendingUp,
-  Droplets,
   CloudSun,
   Bug,
   BarChart3,
-  DollarSign,
   Target,
   Settings,
   MapPin,
@@ -26,21 +24,22 @@ import {
   Plus,
 } from 'lucide-react'
 
-const quickActions = [
-  { label: 'Soil Analysis', description: 'Test soil health and nutrients', icon: FlaskConical, href: '/dashboard/soil', color: 'text-earth-500' },
-  { label: 'Crop Recommendations', description: 'Get AI-powered crop suggestions', icon: Sprout, href: '/dashboard/crop', color: 'text-brand' },
-  { label: 'Yield Prediction', description: 'Predict expected crop yield', icon: Wheat, href: '/dashboard/yield', color: 'text-earth-600' },
-  { label: 'Fertilizer Plan', description: 'Optimize fertilizer usage', icon: Droplets, href: '/dashboard/fertilizer', color: 'text-info' },
-  { label: 'Weather Forecast', description: 'Local weather and alerts', icon: CloudSun, href: '/dashboard/weather', color: 'text-info' },
-  { label: 'Disease Detection', description: 'Identify crop diseases', icon: Bug, href: '/dashboard/disease', color: 'text-danger' },
-  { label: 'Market Prices', description: 'Current crop market prices', icon: BarChart3, href: '/dashboard/market', color: 'text-fresh-500' },
-  { label: 'Risk Assessment', description: 'Evaluate farming risks', icon: Target, href: '/dashboard/risk', color: 'text-warning' },
-]
-
 export function DashboardPage() {
   const { farms, currentFarm, loading: farmsLoading } = useFarm()
+  const { t } = useLanguage()
   const [farmDetails, setFarmDetails] = useState<Farm | null>(null)
   const [detailsLoading, setDetailsLoading] = useState(false)
+
+  const quickActions = [
+    { label: t('action.soil'), description: t('action.soilDesc'), icon: FlaskConical, href: '/dashboard/soil', color: 'text-earth-500' },
+    { label: t('action.crop'), description: t('action.cropDesc'), icon: Sprout, href: '/dashboard/crop', color: 'text-brand' },
+    { label: t('action.yield'), description: t('action.yieldDesc'), icon: Wheat, href: '/dashboard/yield', color: 'text-earth-600' },
+    { label: t('action.fertilizer'), description: t('action.fertilizerDesc'), icon: FlaskConical, href: '/dashboard/fertilizer', color: 'text-info' },
+    { label: t('action.weather'), description: t('action.weatherDesc'), icon: CloudSun, href: '/dashboard/weather', color: 'text-info' },
+    { label: t('action.disease'), description: t('action.diseaseDesc'), icon: Bug, href: '/dashboard/disease', color: 'text-danger' },
+    { label: t('action.market'), description: t('action.marketDesc'), icon: BarChart3, href: '/dashboard/market', color: 'text-fresh-500' },
+    { label: t('action.risk'), description: t('action.riskDesc'), icon: Target, href: '/dashboard/risk', color: 'text-warning' },
+  ]
 
   // Fetch current farm details
   useEffect(() => {
@@ -71,19 +70,19 @@ export function DashboardPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Welcome to AgriAI</h1>
-          <p className="text-sm text-neutral-500">
-            Your intelligent farming dashboard. Start by creating your first farm.
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{t('dashboard.welcome')}</h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            {t('dashboard.welcomeDesc')}
           </p>
         </div>
         <EmptyState
-          title="No farms yet"
-          description="Create your first farm to get started with AI-powered insights."
+          title={t('dashboard.emptyTitle')}
+          description={t('dashboard.emptyDesc')}
           action={
             <Link to="/dashboard/farms">
               <Button>
                 <Plus className="h-4 w-4" />
-                Create Your First Farm
+                {t('dashboard.createFirstFarm')}
               </Button>
             </Link>
           }
@@ -96,14 +95,14 @@ export function DashboardPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-neutral-900">
-          Welcome back
+        <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+          {t('dashboard.welcome')}
           {currentFarm ? (
             <span className="text-brand"> - {currentFarm.name}</span>
           ) : null}
         </h1>
-        <p className="text-sm text-neutral-500">
-          Here is an overview of your farm and available tools.
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          {t('dashboard.welcomeDesc')}
         </p>
       </div>
 
@@ -112,12 +111,12 @@ export function DashboardPage() {
         <Card>
           <CardContent className="pt-5">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-fresh-500/10">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-fresh-500/10 dark:bg-fresh-500/20">
                 <Sprout className="h-5 w-5 text-brand" />
               </div>
               <div>
-                <p className="text-sm text-neutral-500">Total Farms</p>
-                <p className="text-xl font-bold text-neutral-900">{farms.length}</p>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Farms</p>
+                <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{farms.length}</p>
               </div>
             </div>
           </CardContent>
@@ -126,16 +125,16 @@ export function DashboardPage() {
         <Card>
           <CardContent className="pt-5">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-earth-500/10">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-earth-500/10 dark:bg-earth-500/20">
                 <MapPin className="h-5 w-5 text-earth-500" />
               </div>
               <div>
-                <p className="text-sm text-neutral-500">Total Area</p>
-                <p className="text-xl font-bold text-neutral-900">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Area</p>
+                <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
                   {formatNumber(
                     farms.reduce((sum, f) => sum + (f.total_area || 0), 0)
                   )}
-                  <span className="text-sm font-normal text-neutral-500 ml-1">ha</span>
+                  <span className="text-sm font-normal text-neutral-500 dark:text-neutral-400 ml-1">ha</span>
                 </p>
               </div>
             </div>
@@ -145,12 +144,12 @@ export function DashboardPage() {
         <Card>
           <CardContent className="pt-5">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/10">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/10 dark:bg-info/20">
                 <Wheat className="h-5 w-5 text-info" />
               </div>
               <div>
-                <p className="text-sm text-neutral-500">Total Fields</p>
-                <p className="text-xl font-bold text-neutral-900">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Fields</p>
+                <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
                   {farms.reduce((sum, f) => sum + (f.fields?.length || 0), 0)}
                 </p>
               </div>
@@ -161,12 +160,12 @@ export function DashboardPage() {
         <Card>
           <CardContent className="pt-5">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10 dark:bg-warning/20">
                 <Settings className="h-5 w-5 text-warning" />
               </div>
               <div>
-                <p className="text-sm text-neutral-500">Active Farm</p>
-                <p className="text-xl font-bold text-neutral-900 truncate max-w-[120px]">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">Active Farm</p>
+                <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100 truncate max-w-[120px]">
                   {currentFarm?.name || '--'}
                 </p>
               </div>
@@ -191,56 +190,56 @@ export function DashboardPage() {
           </CardHeader>
           <CardContent>
             {detailsLoading ? (
-              <p className="text-sm text-neutral-500">Loading farm details...</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading farm details...</p>
             ) : farmDetails ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="space-y-1">
-                  <p className="text-xs text-neutral-500">Name</p>
-                  <p className="text-sm font-medium text-neutral-900">{farmDetails.name}</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Name</p>
+                  <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{farmDetails.name}</p>
                 </div>
                 {farmDetails.location && (
                   <div className="space-y-1">
-                    <p className="text-xs text-neutral-500">Location</p>
-                    <p className="text-sm font-medium text-neutral-900">{farmDetails.location}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Location</p>
+                    <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{farmDetails.location}</p>
                   </div>
                 )}
                 {farmDetails.total_area != null && (
                   <div className="space-y-1">
-                    <p className="text-xs text-neutral-500">Total Area</p>
-                    <p className="text-sm font-medium text-neutral-900">
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Total Area</p>
+                    <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
                       {formatArea(farmDetails.total_area, farmDetails.area_unit)}
                     </p>
                   </div>
                 )}
                 {farmDetails.soil_type && (
                   <div className="space-y-1">
-                    <p className="text-xs text-neutral-500">Soil Type</p>
-                    <p className="text-sm font-medium text-neutral-900">{farmDetails.soil_type}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Soil Type</p>
+                    <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{farmDetails.soil_type}</p>
                   </div>
                 )}
                 {farmDetails.irrigation_type && (
                   <div className="space-y-1">
-                    <p className="text-xs text-neutral-500">Irrigation</p>
-                    <p className="text-sm font-medium text-neutral-900">
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Irrigation</p>
+                    <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
                       {farmDetails.irrigation_type}
                     </p>
                   </div>
                 )}
                 <div className="space-y-1">
-                  <p className="text-xs text-neutral-500">Fields</p>
-                  <p className="text-sm font-medium text-neutral-900">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Fields</p>
+                  <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
                     {farmDetails.fields?.length || 0}
                   </p>
                 </div>
                 {farmDetails.description && (
                   <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-                    <p className="text-xs text-neutral-500">Description</p>
-                    <p className="text-sm text-neutral-700">{farmDetails.description}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Description</p>
+                    <p className="text-sm text-neutral-700 dark:text-neutral-300">{farmDetails.description}</p>
                   </div>
                 )}
               </div>
             ) : (
-              <p className="text-sm text-neutral-500">No details available.</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">No details available.</p>
             )}
           </CardContent>
         </Card>
@@ -264,7 +263,7 @@ export function DashboardPage() {
                 </Badge>
               ))}
             </div>
-            <p className="mt-2 text-xs text-neutral-500">
+            <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
               Visit the <Link to="/dashboard/farms" className="text-brand underline">Farm Management</Link> page to switch or manage farms.
             </p>
           </CardContent>
@@ -273,7 +272,7 @@ export function DashboardPage() {
 
       {/* Quick Actions */}
       <div>
-        <h2 className="mb-4 text-lg font-semibold text-neutral-900">Quick Actions</h2>
+        <h2 className="mb-4 text-lg font-semibold text-neutral-900 dark:text-neutral-100">{t('dashboard.quickActions')}</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {quickActions.map((action) => {
             const Icon = action.icon
@@ -282,12 +281,12 @@ export function DashboardPage() {
                 <Card className="transition-shadow hover:shadow-card-hover cursor-pointer h-full">
                   <CardContent className="pt-5">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100 flex-shrink-0">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 flex-shrink-0">
                         <Icon className={`h-5 w-5 ${action.color}`} />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-neutral-900">{action.label}</p>
-                        <p className="text-xs text-neutral-500 mt-0.5">{action.description}</p>
+                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{action.label}</p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{action.description}</p>
                       </div>
                     </div>
                   </CardContent>

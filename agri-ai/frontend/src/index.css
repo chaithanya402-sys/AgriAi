@@ -16,11 +16,133 @@
   body {
     @apply bg-white text-neutral-800 antialiased;
     font-family: 'Inter', 'DM Sans', system-ui, sans-serif;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-sans text-neutral-900;
   }
+}
+
+/* ---------------- DARK MODE OVERRIDES ---------------- */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0b140f !important;
+  color: #e2eae4 !important;
+}
+
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark h5,
+html.dark h6 {
+  color: #f1f8f3 !important;
+}
+
+html.dark .bg-white {
+  background-color: #122119 !important;
+}
+
+html.dark .bg-neutral-50 {
+  background-color: #0b140f !important;
+}
+
+html.dark .bg-neutral-100 {
+  background-color: #182b21 !important;
+}
+
+html.dark .bg-neutral-200 {
+  background-color: #233c2e !important;
+}
+
+html.dark .border-neutral-200,
+html.dark .border-neutral-300,
+html.dark .divide-neutral-100 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-neutral-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1c3527 !important;
+}
+
+html.dark .text-neutral-900 {
+  color: #f1f8f3 !important;
+}
+
+html.dark .text-neutral-800 {
+  color: #e2eae4 !important;
+}
+
+html.dark .text-neutral-700 {
+  color: #c4d4ca !important;
+}
+
+html.dark .text-neutral-600 {
+  color: #9ab1a3 !important;
+}
+
+html.dark .text-neutral-500 {
+  color: #799283 !important;
+}
+
+html.dark .text-neutral-400 {
+  color: #60796b !important;
+}
+
+/* Card in dark mode */
+html.dark .card,
+html.dark [data-card] {
+  background-color: #122119 !important;
+  border-color: #1c3527 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Sidebar & Header */
+html.dark aside {
+  background-color: #0e1b14 !important;
+  border-color: #1c3527 !important;
+}
+
+html.dark header {
+  background-color: #0e1b14 !important;
+  border-color: #1c3527 !important;
+}
+
+/* Inputs, Textareas, Selects */
+html.dark input,
+html.dark textarea,
+html.dark select,
+html.dark [role="combobox"] {
+  background-color: #0e1a13 !important;
+  border-color: #233e2f !important;
+  color: #f1f8f3 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #60796b !important;
+}
+
+/* Radix Select Dropdown Portal */
+html.dark [role="listbox"],
+html.dark [data-radix-select-content],
+html.dark [data-radix-popper-content-wrapper] > div {
+  background-color: #13241c !important;
+  border-color: #244232 !important;
+  color: #f1f8f3 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6) !important;
+}
+
+html.dark [role="option"],
+html.dark [data-radix-collection-item] {
+  color: #e2eae4 !important;
+}
+
+html.dark [role="option"]:hover,
+html.dark [role="option"][data-highlighted] {
+  background-color: #1e382b !important;
+  color: #46c05b !important;
 }
 
 @layer components {

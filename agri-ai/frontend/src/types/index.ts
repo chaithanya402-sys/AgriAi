@@ -3,11 +3,13 @@
 export interface User {
   id: number
   name: string
+  fullName?: string
   email: string
   phone?: string | null
   location?: string | null
   language_preference: string
   is_active: boolean
+  status?: string
   created_at?: string | null
 }
 

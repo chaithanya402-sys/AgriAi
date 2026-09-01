@@ -27,6 +27,7 @@ import { AssistantPage } from '@/pages/dashboard/AssistantPage'
 import { NotificationsPage } from '@/pages/dashboard/NotificationsPage'
 import { ReportsPage } from '@/pages/dashboard/ReportsPage'
 import { SettingsPage } from '@/pages/dashboard/SettingsPage'
+import { ProfilePage } from '@/pages/dashboard/ProfilePage'
 
 function DashboardShell() {
   return (
@@ -66,6 +67,7 @@ export default function App() {
         <Route path="assistant" element={<AssistantPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 

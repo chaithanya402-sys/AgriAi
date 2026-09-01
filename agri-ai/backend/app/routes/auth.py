@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.config.database import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
+from app.schemas.user import UserCreate, UserLogin, UserUpdate, UserResponse, Token
 from app.utils.security import hash_password, verify_password, create_access_token, get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -52,3 +52,34 @@ def login_json(credentials: UserLogin, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.get("/profile", response_model=UserResponse)
+def get_profile(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+@router.put("/profile", response_model=UserResponse)
+def update_profile(
+    updates: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    name_val = updates.fullName if updates.fullName is not None else updates.name
+    if name_val is not None:
+        trimmed_name = name_val.strip()
+        if trimmed_name:
+            current_user.name = trimmed_name
+
+    if updates.phone is not None:
+        trimmed_phone = updates.phone.strip()
+        current_user.phone = trimmed_phone if trimmed_phone else None
+
+    if updates.location is not None:
+        trimmed_loc = updates.location.strip()
+        current_user.location = trimmed_loc if trimmed_loc else None
+
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+

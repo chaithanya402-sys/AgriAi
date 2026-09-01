@@ -72,6 +72,9 @@ export const authApi = {
   login: (email: string, password: string) =>
     request('/auth/login/json', { method: 'POST', body: { email, password }, auth: false }),
   me: () => request('/auth/me'),
+  getProfile: () => request('/auth/profile'),
+  updateProfile: (data: { name?: string; fullName?: string; phone?: string; location?: string }) =>
+    request('/auth/profile', { method: 'PUT', body: data }),
 }
 
 // ---- Farms ----

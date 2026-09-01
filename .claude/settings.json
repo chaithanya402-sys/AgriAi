@@ -3,6 +3,6 @@
   "env": {
     "ANTHROPIC_BASE_URL": "http://localhost:20128/v1",
     "ANTHROPIC_AUTH_TOKEN": "sk-a0b6e975a9edcccb-6a74f7-64d7a847",
-    "ANTHROPIC_MODEL": "auto/best-coding"
+    "ANTHROPIC_MODEL": "auto/claude-sonnet"
   }
 }
