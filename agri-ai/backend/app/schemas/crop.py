@@ -12,6 +12,8 @@ class CropRecommendationRequest(BaseModel):
     ph: float
     rainfall: float
     area: Optional[float] = 1.0
+    state: Optional[str] = None
+    district: Optional[str] = None
 
 
 class CropOption(BaseModel):

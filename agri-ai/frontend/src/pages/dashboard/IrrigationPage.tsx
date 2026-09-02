@@ -52,27 +52,85 @@ const RECOMMENDATION_TONE: Record<string, 'danger' | 'warning' | 'success' | 'in
   'Hold off — soil already wet': 'info',
 }
 
-export function IrrigationPage() {
-  const { farms, currentFarm, loading: farmsLoading } = useFarm()
+import { soilApi } from '@/services/modules'
+import { agriculturalDataService } from '@/services/agriculturalDataService'
 
-  const [farmId, setFarmId] = useState<string>('')
+export function IrrigationPage() {
+  const { farms, selectedFarmId, setSelectedFarmId, currentFarm, loading: farmsLoading } = useFarm()
+
+  const activeFarm = farms.find((f) => f.id === selectedFarmId) || currentFarm || null
+
+  const [farmId, setFarmId] = useState<string>(() => (activeFarm ? String(activeFarm.id) : ''))
   const [soilMoisture, setSoilMoisture] = useState<number>(45)
   const [crop, setCrop] = useState<string>('Wheat')
   const [temperature, setTemperature] = useState<string>('')
   const [forecastRainfall, setForecastRainfall] = useState<string>('')
 
-  // Default form to the currently selected farm.
-  useEffect(() => {
-    if (!farmId && currentFarm) setFarmId(String(currentFarm.id))
-  }, [currentFarm, farmId])
-
   const result = useAsync<IrrigationResult>()
 
+  // When selected farm changes, update moisture, temperature, and re-compute recommendation
+  useEffect(() => {
+    if (!activeFarm?.id) return
+
+    const targetId = activeFarm.id
+    setFarmId(String(targetId))
+
+    soilApi
+      .getFarmSoil(targetId)
+      .then(async (soil) => {
+        let moistureVal = 45
+        if (soil.found && soil.moisture != null) {
+          moistureVal = soil.moisture
+          setSoilMoisture(moistureVal)
+        }
+
+        let tempVal = ''
+        let rainVal = ''
+        let activeCrop = crop
+
+        if (soil.state && soil.district) {
+          try {
+            const cropData = await agriculturalDataService.getCropData(soil.state, soil.district)
+            if (cropData.found) {
+              if (cropData.temperature != null) {
+                tempVal = String(cropData.temperature)
+                setTemperature(tempVal)
+              }
+              if (cropData.rainfall != null) {
+                rainVal = String(Math.round(cropData.rainfall / 30))
+                setForecastRainfall(rainVal)
+              }
+              if (cropData.crops && cropData.crops.length > 0) {
+                activeCrop = cropData.crops[0]
+                setCrop(activeCrop)
+              }
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+
+        result.run(() =>
+          irrigationApi.recommend({
+            farm_id: targetId,
+            soil_moisture: moistureVal,
+            crop: activeCrop || 'Wheat',
+            temperature: tempVal ? Number(tempVal) : undefined,
+            forecast_rainfall_mm: rainVal ? Number(rainVal) : undefined,
+          })
+        )
+      })
+      .catch((err) => {
+        console.warn('Failed to fetch farm soil moisture for irrigation:', err)
+      })
+  }, [activeFarm?.id])
+
   const handleSubmit = () => {
-    if (!farmId) return
+    const targetFarmId = Number(farmId) || activeFarm?.id
+    if (!targetFarmId) return
     result.run(() =>
       irrigationApi.recommend({
-        farm_id: Number(farmId),
+        farm_id: targetFarmId,
         soil_moisture: soilMoisture,
         crop,
         temperature: temperature ? Number(temperature) : undefined,
@@ -80,12 +138,6 @@ export function IrrigationPage() {
       })
     )
   }
-
-  // Auto-run once when a farm is available so a recommendation is visible immediately.
-  useEffect(() => {
-    if (farmId && !result.data && !result.loading && !result.error) handleSubmit()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [farmId])
 
   if (farmsLoading) {
     return <PageLoader label="Loading farms…" />
@@ -125,14 +177,21 @@ export function IrrigationPage() {
         <CardContent className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="space-y-2">
             <Label>Farm</Label>
-            <Select value={farmId} onValueChange={setFarmId}>
+            <Select
+              value={selectedFarmId?.toString() || activeFarm?.id?.toString() || ''}
+              onValueChange={(v) => {
+                const id = Number(v)
+                setSelectedFarmId(id)
+                setFarmId(v)
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select a farm" />
               </SelectTrigger>
               <SelectContent>
                 {farms.map((f) => (
                   <SelectItem key={f.id} value={String(f.id)}>
-                    {f.name}
+                    {f.name} {f.location ? `(${f.location})` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>

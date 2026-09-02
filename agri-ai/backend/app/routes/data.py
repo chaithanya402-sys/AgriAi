@@ -1,15 +1,64 @@
-"""Read-only endpoints exposing the loaded CropYield dataset statistics.
-
-These let the frontend list the real crops/states and fetch dataset-derived
-values instead of hardcoding them. All numbers come from app.data_loader
-(the consolidated 10,000-record dataset).
-"""
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Query
 from typing import Dict, List, Optional
+from sqlalchemy.orm import Session
 
 from app import data_loader
+from app.config.database import get_db
+from app.services import agricultural_dataset_service as ads
 
 router = APIRouter(prefix="/api/data", tags=["data"])
+
+
+@router.get("/location/resolve")
+def resolve_location_endpoint(
+    lat: Optional[float] = Query(None),
+    lon: Optional[float] = Query(None),
+    farm_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+) -> Dict:
+    """Resolve location to State and District from live GPS coords or farm fallback."""
+    result = ads.resolve_location(lat=lat, lon=lon, farm_id=farm_id, db=db)
+    return result
+
+
+@router.get("/soil-data")
+def get_soil_data_endpoint(
+    state: str = Query(...),
+    district: str = Query(...),
+) -> Dict:
+    """Aggregated soil parameters for State + District from real Excel datasets."""
+    return ads.get_soil_data(state, district)
+
+
+@router.get("/crop-data")
+def get_crop_data_endpoint(
+    state: str = Query(...),
+    district: str = Query(...),
+) -> Dict:
+    """Aggregated crop and climate parameters for State + District from real Excel datasets."""
+    return ads.get_crop_data(state, district)
+
+
+@router.get("/crop-recommendations")
+def get_crop_recommendations_endpoint(
+    state: str = Query(...),
+    district: str = Query(...),
+    area: float = Query(1.0),
+) -> Dict:
+    """Rank crops available in district based on real historical performance."""
+    return ads.get_crop_recommendations(state, district, area=area)
+
+
+@router.get("/yield-data")
+def get_yield_data_endpoint(
+    state: str = Query(...),
+    district: str = Query(...),
+    crop: str = Query(...),
+    area: float = Query(1.0),
+    season: Optional[str] = Query(None),
+) -> Dict:
+    """Historical average yield and expected production for State + District + Crop."""
+    return ads.get_yield_data(state, district, crop, area=area, season=season)
 
 
 @router.get("/crops")

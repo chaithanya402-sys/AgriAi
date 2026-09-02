@@ -49,6 +49,20 @@ def compute_soil_health(features: Dict[str, float]) -> Tuple[float, str, List[Di
 
     for nutrient, (lo, hi) in IDEAL_RANGES.items():
         value = features.get(nutrient, 0.0)
+        is_na = nutrient == "organic_carbon" and (value is None or value <= 0.0 or str(value).lower() in ("not available", "nan"))
+        if is_na:
+            nutrition.append(
+                {
+                    "nutrient": "Organic Carbon",
+                    "value": 0.0,
+                    "status": "Optimal",
+                    "score": 100.0,
+                    "ideal_range": [lo, hi],
+                    "explanation": "Organic Carbon metric is not present in state-wise datasets.",
+                }
+            )
+            continue
+
         if lo <= value <= hi:
             score = 100.0
         else:

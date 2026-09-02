@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useFarm } from '@/components/farm/FarmContext'
 import { farmApi } from '@/services/api'
+import { agriculturalDataService } from '@/services/agriculturalDataService'
 import { useAsync } from '@/hooks/useAsync'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/Card'
@@ -24,6 +25,7 @@ import {
   ChevronUp,
   X,
   Sprout,
+  Navigation,
 } from 'lucide-react'
 
 const soilTypes = ['Clay', 'Sandy', 'Loamy', 'Silt', 'Peat', 'Chalky', 'Other']
@@ -57,6 +59,7 @@ export function FarmManagementPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState(emptyFarm)
   const [expandedFarm, setExpandedFarm] = useState<number | null>(null)
+  const [detectingLocation, setDetectingLocation] = useState(false)
 
   // Field sub-forms
   const [showFieldForm, setShowFieldForm] = useState<number | null>(null)
@@ -81,6 +84,51 @@ export function FarmManagementPage() {
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser.')
+      return
+    }
+
+    setDetectingLocation(true)
+    clearMessages()
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(4))
+        const lon = Number(pos.coords.longitude.toFixed(4))
+
+        setForm((prev) => ({
+          ...prev,
+          latitude: String(lat),
+          longitude: String(lon),
+        }))
+
+        try {
+          const resolved = await agriculturalDataService.resolveLocation({ lat, lon })
+          if (resolved.state && resolved.district) {
+            setForm((prev) => ({
+              ...prev,
+              location: `${resolved.district}, ${resolved.state}`,
+            }))
+            setSuccess(`Location detected: ${resolved.district}, ${resolved.state} (${lat}, ${lon})`)
+          } else {
+            setSuccess(`Coordinates captured: ${lat}, ${lon}`)
+          }
+        } catch {
+          setSuccess(`Coordinates captured: ${lat}, ${lon}`)
+        } finally {
+          setDetectingLocation(false)
+        }
+      },
+      (err) => {
+        setDetectingLocation(false)
+        setError(`Unable to retrieve location: ${err.message}`)
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    )
   }
 
   const openCreateForm = () => {
@@ -252,9 +300,25 @@ export function FarmManagementPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Location</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Location</Label>
+                    <button
+                      type="button"
+                      onClick={handleGetCurrentLocation}
+                      disabled={detectingLocation}
+                      className="inline-flex items-center gap-1 text-xs text-brand font-medium hover:underline disabled:opacity-50"
+                      title="Use browser GPS to capture latitude and longitude"
+                    >
+                      {detectingLocation ? (
+                        <LoadingSpinner className="h-3 w-3" />
+                      ) : (
+                        <Navigation className="h-3 w-3" />
+                      )}
+                      <span>{detectingLocation ? 'Locating...' : 'Get Current Location'}</span>
+                    </button>
+                  </div>
                   <Input
-                    placeholder="e.g. Nashik, Maharashtra"
+                    placeholder="e.g. Nellore, Andhra Pradesh"
                     value={form.location}
                     onChange={(e) => handleChange('location', e.target.value)}
                   />

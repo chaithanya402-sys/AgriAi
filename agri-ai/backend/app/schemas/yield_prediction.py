@@ -13,6 +13,9 @@ class YieldPredictionRequest(BaseModel):
     humidity: float
     ph: float
     rainfall: float
+    state: Optional[str] = None
+    district: Optional[str] = None
+    season: Optional[str] = None
 
 
 class FeatureImportance(BaseModel):

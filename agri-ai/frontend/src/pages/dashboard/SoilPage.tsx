@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useFarm } from '@/components/farm/FarmContext'
-import { soilApi } from '@/services/modules'
+import { soilApi, FarmSoilData } from '@/services/modules'
 import { useAsync } from '@/hooks/useAsync'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
@@ -17,7 +17,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/Select'
-import { PageLoader, ButtonLoader } from '@/components/ui/Loading'
+import { PageLoader, ButtonLoader, LoadingSpinner } from '@/components/ui/Loading'
 import { formatNumber } from '@/lib/utils'
 import type { SoilAnalysisResult } from '@/types'
 import {
@@ -27,6 +27,7 @@ import {
   Info,
   Leaf,
   Droplets,
+  MapPin,
 } from 'lucide-react'
 
 const gradeColors: Record<string, string> = {
@@ -47,8 +48,8 @@ const statusConfig: Record<
 }
 
 export function SoilPage() {
-  const { farms, currentFarm, loading: farmsLoading } = useFarm()
-  const { data: result, loading, error, run } = useAsync<SoilAnalysisResult & { demo_mode?: boolean }>()
+  const { farms, selectedFarmId, setSelectedFarmId, currentFarm, loading: farmsLoading } = useFarm()
+  const { data: analyzeResult, loading: analyzing, error: analyzeError, run } = useAsync<SoilAnalysisResult & { demo_mode?: boolean }>()
 
   const [form, setForm] = useState({
     farm_id: '',
@@ -60,23 +61,127 @@ export function SoilPage() {
     moisture: '',
   })
 
+  const [soilLoading, setSoilLoading] = useState(false)
+  const [soilError, setSoilError] = useState<string | null>(null)
+  const [soilData, setSoilData] = useState<FarmSoilData | null>(null)
+  const [activeAnalysis, setActiveAnalysis] = useState<SoilAnalysisResult | null>(null)
+
+  const activeFarm = farms.find((f) => f.id === selectedFarmId) || currentFarm || null
+
+  // Automatically fetch farm-specific soil data whenever selected farm changes
+  useEffect(() => {
+    if (!activeFarm?.id) return
+
+    const targetFarmId = activeFarm.id
+    let isCancelled = false
+
+    setSoilLoading(true)
+    setSoilError(null)
+    // Clear previous farm's values and analysis immediately
+    setSoilData(null)
+    setActiveAnalysis(null)
+
+    soilApi
+      .getFarmSoil(targetFarmId)
+      .then((data) => {
+        if (isCancelled) return
+
+        // Data validation: verify that the returned data belongs to the selected farmId
+        if (data.farmId !== targetFarmId) {
+          return
+        }
+
+        // Required debug logs
+        console.log("Selected Farm ID:", targetFarmId)
+        console.log("Selected Farm:", activeFarm)
+        console.log("Latitude:", activeFarm.latitude)
+        console.log("Longitude:", activeFarm.longitude)
+        console.log("Soil Data:", data)
+
+        if (!data.found) {
+          setSoilError("Soil data is not available for this location.")
+          setForm({
+            farm_id: String(targetFarmId),
+            nitrogen: '',
+            phosphorus: '',
+            potassium: '',
+            ph: '',
+            organic_carbon: '',
+            moisture: '',
+          })
+          setSoilLoading(false)
+          return
+        }
+
+        setSoilData(data)
+        setSoilError(null)
+
+        // Populate form inputs with returned soil values
+        setForm({
+          farm_id: String(targetFarmId),
+          nitrogen: data.nitrogen != null ? String(data.nitrogen) : '',
+          phosphorus: data.phosphorus != null ? String(data.phosphorus) : '',
+          potassium: data.potassium != null ? String(data.potassium) : '',
+          ph: data.ph != null ? String(data.ph) : '',
+          organic_carbon: data.organicCarbon != null ? String(data.organicCarbon) : 'Not available',
+          moisture: data.moisture != null ? String(data.moisture) : '',
+        })
+
+        // Immediate analysis results for this farm's soil
+        if (data.healthScore != null && data.grade) {
+          setActiveAnalysis({
+            id: 0,
+            health_score: data.healthScore,
+            grade: data.grade,
+            nutrients: data.nutrients || [],
+            recommendations: data.recommendations || [],
+            explanation: data.explanation || '',
+          })
+        }
+        setSoilLoading(false)
+      })
+      .catch((err) => {
+        if (isCancelled) return
+        console.error("Failed to load soil data for farm:", err)
+        setSoilError("Soil data is not available for this location.")
+        setSoilLoading(false)
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [activeFarm?.id])
+
+  const handleFarmSelect = (idStr: string) => {
+    const id = Number(idStr)
+    setSelectedFarmId(id)
+  }
+
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await run(() =>
+    const ocValue =
+      form.organic_carbon === 'Not available' || !form.organic_carbon
+        ? 0
+        : Number(form.organic_carbon)
+
+    const res = await run(() =>
       soilApi.analyze({
-        farm_id: Number(form.farm_id) || currentFarm?.id,
+        farm_id: activeFarm?.id,
         nitrogen: Number(form.nitrogen),
         phosphorus: Number(form.phosphorus),
         potassium: Number(form.potassium),
         ph: Number(form.ph),
-        organic_carbon: Number(form.organic_carbon),
+        organic_carbon: ocValue,
         moisture: Number(form.moisture),
       })
     )
+    if (res) {
+      setActiveAnalysis(res)
+    }
   }
 
   if (farmsLoading) return <PageLoader />
@@ -95,6 +200,8 @@ export function SoilPage() {
     )
   }
 
+  const displayResult = activeAnalysis || analyzeResult
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -104,17 +211,26 @@ export function SoilPage() {
             Analyze soil composition and get actionable recommendations.
           </p>
         </div>
-        {result?.demo_mode && <Badge variant="info">Demo data</Badge>}
+        {soilData?.source && (
+          <Badge variant="outline" className="flex items-center gap-1">
+            <MapPin className="h-3 w-3" />
+            {soilData.source}
+          </Badge>
+        )}
       </div>
 
-      {/* Form */}
+      {/* Farm & Soil Parameters Form */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FlaskConical className="h-5 w-5 text-brand" />
             Soil Parameters
           </CardTitle>
-          <CardDescription>Enter soil test values for analysis.</CardDescription>
+          <CardDescription>
+            {activeFarm?.location
+              ? `Location: ${activeFarm.location}${activeFarm.latitude ? ` (${activeFarm.latitude}, ${activeFarm.longitude})` : ''}`
+              : 'Enter soil test values for analysis.'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -123,8 +239,8 @@ export function SoilPage() {
               <div className="space-y-1.5">
                 <Label>Farm</Label>
                 <Select
-                  value={form.farm_id || currentFarm?.id?.toString() || ''}
-                  onValueChange={(v) => handleChange('farm_id', v)}
+                  value={selectedFarmId?.toString() || activeFarm?.id?.toString() || ''}
+                  onValueChange={handleFarmSelect}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select farm" />
@@ -132,7 +248,7 @@ export function SoilPage() {
                   <SelectContent>
                     {farms.map((farm) => (
                       <SelectItem key={farm.id} value={farm.id.toString()}>
-                        {farm.name}
+                        {farm.name} {farm.location ? `(${farm.location})` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -147,6 +263,7 @@ export function SoilPage() {
                   placeholder="e.g. 45"
                   value={form.nitrogen}
                   onChange={(e) => handleChange('nitrogen', e.target.value)}
+                  disabled={soilLoading}
                   required
                 />
               </div>
@@ -159,6 +276,7 @@ export function SoilPage() {
                   placeholder="e.g. 22"
                   value={form.phosphorus}
                   onChange={(e) => handleChange('phosphorus', e.target.value)}
+                  disabled={soilLoading}
                   required
                 />
               </div>
@@ -171,6 +289,7 @@ export function SoilPage() {
                   placeholder="e.g. 180"
                   value={form.potassium}
                   onChange={(e) => handleChange('potassium', e.target.value)}
+                  disabled={soilLoading}
                   required
                 />
               </div>
@@ -183,6 +302,7 @@ export function SoilPage() {
                   placeholder="e.g. 6.5"
                   value={form.ph}
                   onChange={(e) => handleChange('ph', e.target.value)}
+                  disabled={soilLoading}
                   required
                 />
               </div>
@@ -190,12 +310,11 @@ export function SoilPage() {
               <div className="space-y-1.5">
                 <Label>Organic Carbon (%)</Label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g. 1.2"
+                  type="text"
+                  placeholder="Not available"
                   value={form.organic_carbon}
                   onChange={(e) => handleChange('organic_carbon', e.target.value)}
-                  required
+                  disabled={soilLoading}
                 />
               </div>
 
@@ -207,30 +326,54 @@ export function SoilPage() {
                   placeholder="e.g. 35"
                   value={form.moisture}
                   onChange={(e) => handleChange('moisture', e.target.value)}
+                  disabled={soilLoading}
                   required
                 />
               </div>
             </div>
 
-            <div className="flex justify-end pt-2">
-              <Button type="submit" disabled={loading}>
-                {loading ? <ButtonLoader label="Analyzing..." /> : 'Analyze Soil'}
+            <div className="flex items-center justify-between pt-2">
+              <div className="text-xs text-neutral-500">
+                {activeFarm?.latitude && activeFarm?.longitude ? (
+                  <span>
+                    Farm Coordinates: <strong>{activeFarm.latitude}, {activeFarm.longitude}</strong>
+                  </span>
+                ) : null}
+              </div>
+              <Button type="submit" disabled={analyzing || soilLoading}>
+                {analyzing ? <ButtonLoader label="Analyzing..." /> : 'Analyze Soil'}
               </Button>
             </div>
           </form>
         </CardContent>
       </Card>
 
-      {/* Error */}
-      {error && (
+      {/* Loading state indicator */}
+      {soilLoading && (
+        <div className="flex items-center gap-2 p-3.5 rounded-lg bg-fresh-50 border border-fresh-200 text-sm text-fresh-800">
+          <LoadingSpinner className="h-4 w-4 text-brand animate-spin" />
+          <span className="font-medium">Loading soil data...</span>
+        </div>
+      )}
+
+      {/* No Data / Location Error */}
+      {soilError && !soilLoading && (
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <span>{soilError}</span>
+        </Alert>
+      )}
+
+      {/* Submit Error */}
+      {analyzeError && (
         <Alert variant="danger">
           <AlertTriangle className="h-4 w-4" />
-          <span>{error}</span>
+          <span>{analyzeError}</span>
         </Alert>
       )}
 
       {/* Results */}
-      {result && (
+      {displayResult && !soilLoading && (
         <div className="space-y-6">
           {/* Score & Grade */}
           <div className="grid gap-4 md:grid-cols-2">
@@ -243,17 +386,17 @@ export function SoilPage() {
                   <div className="relative flex-1">
                     <div className="mb-2 flex items-baseline justify-between">
                       <span className="text-3xl font-bold text-neutral-900">
-                        {formatNumber(result.health_score, 0)}
+                        {formatNumber(displayResult.health_score, 0)}
                       </span>
                       <span className="text-sm text-neutral-500">/ 100</span>
                     </div>
                     <Progress
-                      value={result.health_score}
+                      value={displayResult.health_score}
                       className="h-3"
                       indicatorClassName={
-                        result.health_score >= 70
+                        displayResult.health_score >= 70
                           ? 'bg-success'
-                          : result.health_score >= 40
+                          : displayResult.health_score >= 40
                             ? 'bg-warning'
                             : 'bg-danger'
                       }
@@ -261,10 +404,10 @@ export function SoilPage() {
                   </div>
                   <div className="flex flex-col items-center">
                     <Badge
-                      variant={(gradeColors[result.grade] as any) || 'default'}
+                      variant={(gradeColors[displayResult.grade] as any) || 'default'}
                       className="text-lg font-bold px-3 py-1"
                     >
-                      {result.grade}
+                      {displayResult.grade}
                     </Badge>
                     <span className="mt-1 text-xs text-neutral-500">Grade</span>
                   </div>
@@ -281,7 +424,7 @@ export function SoilPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-neutral-600 leading-relaxed">
-                  {result.explanation}
+                  {displayResult.explanation}
                 </p>
               </CardContent>
             </Card>
@@ -298,7 +441,7 @@ export function SoilPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {result.nutrients.map((n, i) => {
+                {displayResult.nutrients.map((n, i) => {
                   const cfg = statusConfig[n.status] || statusConfig.Optimal
                   const Icon = cfg.icon
                   return (
@@ -338,7 +481,7 @@ export function SoilPage() {
             </CardHeader>
             <CardContent>
               <ul className="space-y-3">
-                {result.recommendations.map((rec, i) => (
+                {displayResult.recommendations.map((rec, i) => (
                   <li
                     key={i}
                     className="flex items-start gap-3 rounded-lg bg-fresh-500/5 p-3 text-sm text-neutral-700"

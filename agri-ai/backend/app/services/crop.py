@@ -9,7 +9,23 @@ class CropRecommendationService:
     def __init__(self):
         self.real = RealCropRecommendation() if not settings.DEMO_MODE else None
 
-    def recommend(self, features: Dict[str, float]) -> Dict:
+    def recommend(
+        self,
+        features: Dict[str, float],
+        state: Optional[str] = None,
+        district: Optional[str] = None,
+    ) -> Dict:
+        if state and district:
+            from app.services import agricultural_dataset_service as ads
+            res = ads.get_crop_recommendations(
+                state_name=state,
+                district_name=district,
+                area=features.get("area", 1.0),
+                features=features,
+            )
+            if res.get("recommendations"):
+                return res
+
         if self.real and self.real.available:
             recommendations = self.real.recommend(features)
             demo_mode = False

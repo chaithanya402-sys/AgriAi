@@ -30,7 +30,22 @@ def predict_yield(
         "ph": data.ph,
         "rainfall": data.rainfall,
     }
-    result = service.predict(data.crop, features)
+    state = data.state
+    district = data.district
+    if not (state and district):
+        from app.services import agricultural_dataset_service as ads
+        loc = ads.resolve_location(farm_id=data.farm_id, db=db)
+        state = loc.get("state")
+        district = loc.get("district")
+
+    result = service.predict(
+        crop=data.crop,
+        features=features,
+        state=state,
+        district=district,
+        area=data.area,
+        season=data.season,
+    )
     result["area"] = data.area
     result["crop"] = result.get("crop", data.crop)
     return result

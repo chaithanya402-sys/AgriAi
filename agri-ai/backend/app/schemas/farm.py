@@ -25,6 +25,8 @@ class FieldResponse(FieldCreate):
 class FarmCreate(BaseModel):
     name: str
     location: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     total_area: Optional[float] = None
@@ -37,6 +39,8 @@ class FarmCreate(BaseModel):
 class FarmUpdate(BaseModel):
     name: Optional[str] = None
     location: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     total_area: Optional[float] = None
@@ -51,6 +55,8 @@ class FarmResponse(BaseModel):
     user_id: int
     name: str
     location: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     total_area: Optional[float] = None

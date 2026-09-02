@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useFarm } from '@/components/farm/FarmContext'
 import { yieldApi } from '@/services/modules'
 import { useAsync } from '@/hooks/useAsync'
+import { useAgriculturalLocation } from '@/hooks/useAgriculturalLocation'
+import { agriculturalDataService } from '@/services/agriculturalDataService'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -93,8 +95,10 @@ function FeatureImportanceChart({
 }
 
 export function YieldPage() {
-  const { farms, currentFarm, loading: farmsLoading } = useFarm()
+  const { farms, selectedFarmId, setSelectedFarmId, currentFarm, loading: farmsLoading } = useFarm()
   const { data: result, loading, error, run } = useAsync<YieldPredictionResult>()
+
+  const activeFarm = farms.find((f) => f.id === selectedFarmId) || currentFarm || null
 
   const [form, setForm] = useState({
     farm_id: '',
@@ -109,14 +113,106 @@ export function YieldPage() {
     rainfall: '',
   })
 
+  const [districtCrops, setDistrictCrops] = useState<string[]>([])
+  const [noDataError, setNoDataError] = useState<string | null>(null)
+
+  // Use active farm location
+  const loc = useAgriculturalLocation(activeFarm?.id)
+
+  // Automatically populate values from state dataset + district filter and run yield prediction
+  useEffect(() => {
+    if (!loc.state || !loc.district) {
+      if (loc.error && !loc.loading) {
+        setNoDataError(loc.error)
+      }
+      return
+    }
+
+    let isMounted = true
+    agriculturalDataService
+      .getCropData(loc.state, loc.district)
+      .then((data) => {
+        if (!isMounted) return
+        if (!data.found) {
+          setNoDataError('No agricultural data available for this district.')
+          return
+        }
+
+        setNoDataError(null)
+        const cropsList = data.crops && data.crops.length > 0 ? data.crops : ['Rice']
+        setDistrictCrops(cropsList)
+
+        const selectedCrop = cropsList[0]
+        const farmArea = activeFarm?.total_area ? String(activeFarm.total_area) : '1'
+
+        setForm({
+          farm_id: activeFarm?.id ? String(activeFarm.id) : '',
+          crop: selectedCrop,
+          nitrogen: data.nitrogen != null ? String(data.nitrogen) : '',
+          phosphorus: data.phosphorus != null ? String(data.phosphorus) : '',
+          potassium: data.potassium != null ? String(data.potassium) : '',
+          temperature: data.temperature != null ? String(data.temperature) : '',
+          humidity: data.humidity != null ? String(data.humidity) : '',
+          ph: data.ph != null ? String(data.ph) : '',
+          rainfall: data.rainfall != null ? String(data.rainfall) : '',
+          area: farmArea,
+        })
+
+        // Auto-run yield prediction for the selected farm and first crop
+        run(async () => {
+          const res = await agriculturalDataService.getYieldData(
+            loc.state!,
+            loc.district!,
+            selectedCrop,
+            Number(farmArea) || 1
+          )
+          return {
+            predicted_yield: res.predicted_yield,
+            unit: res.unit,
+            confidence: res.confidence,
+            area: res.area,
+            crop: res.crop,
+            feature_importance: res.feature_importance,
+            demo_mode: false,
+          }
+        })
+      })
+      .catch((err) => {
+        console.error('Failed to load yield inputs from dataset:', err)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [loc.state, loc.district, loc.error, loc.loading, activeFarm?.id])
+
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await run(() =>
-      yieldApi.predict({
+    await run(async () => {
+      // If live or farm location available, fetch real historical yield calculation
+      if (loc.state && loc.district && form.crop) {
+        const res = await agriculturalDataService.getYieldData(
+          loc.state,
+          loc.district,
+          form.crop,
+          Number(form.area) || currentFarm?.total_area || 1
+        )
+        return {
+          predicted_yield: res.predicted_yield,
+          unit: res.unit,
+          confidence: res.confidence,
+          area: res.area,
+          crop: res.crop,
+          feature_importance: res.feature_importance,
+          demo_mode: false,
+        }
+      }
+
+      return yieldApi.predict({
         farm_id: Number(form.farm_id) || currentFarm?.id,
         crop: form.crop,
         area: Number(form.area) || currentFarm?.total_area || 1,
@@ -127,8 +223,10 @@ export function YieldPage() {
         humidity: Number(form.humidity),
         ph: Number(form.ph),
         rainfall: Number(form.rainfall),
+        state: loc.state || undefined,
+        district: loc.district || undefined,
       })
-    )
+    })
   }
 
   if (farmsLoading) return <PageLoader />
@@ -174,8 +272,12 @@ export function YieldPage() {
               <div className="space-y-1.5">
                 <Label>Farm</Label>
                 <Select
-                  value={form.farm_id || currentFarm?.id?.toString() || ''}
-                  onValueChange={(v) => handleChange('farm_id', v)}
+                  value={selectedFarmId?.toString() || activeFarm?.id?.toString() || ''}
+                  onValueChange={(v) => {
+                    const id = Number(v)
+                    setSelectedFarmId(id)
+                    handleChange('farm_id', v)
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select farm" />
@@ -197,7 +299,7 @@ export function YieldPage() {
                     <SelectValue placeholder="Select crop" />
                   </SelectTrigger>
                   <SelectContent>
-                    {CROPS.map((crop) => (
+                    {(districtCrops.length > 0 ? districtCrops : CROPS).map((crop) => (
                       <SelectItem key={crop} value={crop}>
                         {crop}
                       </SelectItem>
@@ -311,6 +413,14 @@ export function YieldPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* No Data / Location Alert */}
+      {noDataError && !error && (
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <span>{noDataError}</span>
+        </Alert>
+      )}
 
       {/* Error */}
       {error && (

@@ -1,12 +1,36 @@
-/**
- * API service endpoints for all ML / analytics modules.
- * Everything is proxied through the FastAPI backend.
- */
 import request from './api'
+import type { NutrientStatus } from '@/types'
+
+export interface FarmSoilData {
+  farmId: number
+  farmName?: string
+  latitude?: number | null
+  longitude?: number | null
+  state?: string
+  district?: string
+  nitrogen?: number
+  phosphorus?: number
+  potassium?: number
+  ph?: number
+  organicCarbon?: string
+  moisture?: number
+  soilTypes?: string[]
+  irrigationTypes?: string[]
+  lastUpdated?: string
+  source?: string
+  found: boolean
+  message?: string
+  healthScore?: number
+  grade?: string
+  nutrients?: NutrientStatus[]
+  recommendations?: string[]
+  explanation?: string
+}
 
 // ---- Soil ----
 export const soilApi = {
   analyze: (data: Record<string, unknown>) => request('/soil/analyze', { method: 'POST', body: data }),
+  getFarmSoil: (farmId: number) => request<FarmSoilData>(`/soil/farm/${farmId}`),
 }
 
 // ---- Crop recommendation ----

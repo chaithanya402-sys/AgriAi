@@ -31,4 +31,12 @@ def recommend_crop(
         "rainfall": data.rainfall,
         "area": data.area or 1.0,
     }
-    return service.recommend(features)
+    state = data.state
+    district = data.district
+    if not (state and district):
+        from app.services import agricultural_dataset_service as ads
+        loc = ads.resolve_location(farm_id=data.farm_id, db=db)
+        state = loc.get("state")
+        district = loc.get("district")
+
+    return service.recommend(features, state=state, district=district)

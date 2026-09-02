@@ -9,7 +9,7 @@ class SoilAnalysisRequest(BaseModel):
     phosphorus: float
     potassium: float
     ph: float
-    organic_carbon: float
+    organic_carbon: Optional[float] = 0.0
     moisture: float
     texture: Optional[str] = None
 

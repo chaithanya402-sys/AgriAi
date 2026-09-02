@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useFarm } from '@/components/farm/FarmContext'
 import { cropApi } from '@/services/modules'
 import { useAsync } from '@/hooks/useAsync'
+import { useAgriculturalLocation } from '@/hooks/useAgriculturalLocation'
+import { agriculturalDataService } from '@/services/agriculturalDataService'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -81,8 +83,10 @@ function FeatureImportanceChart({
 }
 
 export function CropPage() {
-  const { farms, currentFarm, loading: farmsLoading } = useFarm()
+  const { farms, selectedFarmId, setSelectedFarmId, currentFarm, loading: farmsLoading } = useFarm()
   const { data: result, loading, error, run } = useAsync<CropRecommendationResult>()
+
+  const activeFarm = farms.find((f) => f.id === selectedFarmId) || currentFarm || null
 
   const [form, setForm] = useState({
     farm_id: '',
@@ -96,14 +100,107 @@ export function CropPage() {
     area: '',
   })
 
+  const [noDataError, setNoDataError] = useState<string | null>(null)
+
+  // Use active farm location
+  const loc = useAgriculturalLocation(activeFarm?.id)
+
+  // Automatically populate values from state dataset + district filter and run recommendation
+  useEffect(() => {
+    if (!loc.state || !loc.district) {
+      if (loc.error && !loc.loading) {
+        setNoDataError(loc.error)
+      }
+      return
+    }
+
+    let isMounted = true
+    agriculturalDataService
+      .getCropData(loc.state, loc.district)
+      .then((data) => {
+        if (!isMounted) return
+        if (!data.found) {
+          setNoDataError('No agricultural data available for this district.')
+          return
+        }
+
+        setNoDataError(null)
+        const farmArea = activeFarm?.total_area ? String(activeFarm.total_area) : '1'
+        setForm({
+          farm_id: activeFarm?.id ? String(activeFarm.id) : '',
+          nitrogen: data.nitrogen != null ? String(data.nitrogen) : '',
+          phosphorus: data.phosphorus != null ? String(data.phosphorus) : '',
+          potassium: data.potassium != null ? String(data.potassium) : '',
+          temperature: data.temperature != null ? String(data.temperature) : '',
+          humidity: data.humidity != null ? String(data.humidity) : '',
+          ph: data.ph != null ? String(data.ph) : '',
+          rainfall: data.rainfall != null ? String(data.rainfall) : '',
+          area: farmArea,
+        })
+
+        // Auto-run crop recommendation for this farm's location
+        run(async () => {
+          const res = await agriculturalDataService.getCropRecommendations(
+            loc.state!,
+            loc.district!,
+            Number(farmArea) || 1
+          )
+          return {
+            recommendations: res.recommendations,
+            input_features: {
+              nitrogen: Number(data.nitrogen),
+              phosphorus: Number(data.phosphorus),
+              potassium: Number(data.potassium),
+              temperature: Number(data.temperature),
+              humidity: Number(data.humidity),
+              ph: Number(data.ph),
+              rainfall: Number(data.rainfall),
+            },
+            feature_importance: res.feature_importance,
+            demo_mode: false,
+          }
+        })
+      })
+      .catch((err) => {
+        console.error('Failed to load crop parameters from dataset:', err)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [loc.state, loc.district, loc.error, loc.loading, activeFarm?.id])
+
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await run(() =>
-      cropApi.recommend({
+    await run(async () => {
+      // If live or farm location available, fetch real ranked crops directly from dataset
+      if (loc.state && loc.district) {
+        const res = await agriculturalDataService.getCropRecommendations(
+          loc.state,
+          loc.district,
+          Number(form.area) || currentFarm?.total_area || 1
+        )
+        return {
+          recommendations: res.recommendations,
+          input_features: {
+            nitrogen: Number(form.nitrogen),
+            phosphorus: Number(form.phosphorus),
+            potassium: Number(form.potassium),
+            temperature: Number(form.temperature),
+            humidity: Number(form.humidity),
+            ph: Number(form.ph),
+            rainfall: Number(form.rainfall),
+          },
+          feature_importance: res.feature_importance,
+          demo_mode: false,
+        }
+      }
+
+      return cropApi.recommend({
         farm_id: Number(form.farm_id) || currentFarm?.id,
         nitrogen: Number(form.nitrogen),
         phosphorus: Number(form.phosphorus),
@@ -113,8 +210,10 @@ export function CropPage() {
         ph: Number(form.ph),
         rainfall: Number(form.rainfall),
         area: Number(form.area) || currentFarm?.total_area || 1,
+        state: loc.state || undefined,
+        district: loc.district || undefined,
       })
-    )
+    })
   }
 
   if (farmsLoading) return <PageLoader />
@@ -160,8 +259,12 @@ export function CropPage() {
               <div className="space-y-1.5">
                 <Label>Farm</Label>
                 <Select
-                  value={form.farm_id || currentFarm?.id?.toString() || ''}
-                  onValueChange={(v) => handleChange('farm_id', v)}
+                  value={selectedFarmId?.toString() || activeFarm?.id?.toString() || ''}
+                  onValueChange={(v) => {
+                    const id = Number(v)
+                    setSelectedFarmId(id)
+                    handleChange('farm_id', v)
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select farm" />
@@ -269,6 +372,14 @@ export function CropPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* No Data / Location Alert */}
+      {noDataError && !error && (
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <span>{noDataError}</span>
+        </Alert>
+      )}
 
       {/* Error */}
       {error && (
