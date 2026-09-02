@@ -4,8 +4,6 @@ import type { NutrientStatus } from '@/types'
 export interface FarmSoilData {
   farmId: number
   farmName?: string
-  latitude?: number | null
-  longitude?: number | null
   state?: string
   district?: string
   nitrogen?: number

@@ -37,8 +37,6 @@ def get_farm_soil(
         return {
             "farmId": farm.id,
             "farmName": farm.name,
-            "latitude": lat,
-            "longitude": lon,
             "found": False,
             "message": "Soil data is not available for this location.",
         }
@@ -48,8 +46,6 @@ def get_farm_soil(
         return {
             "farmId": farm.id,
             "farmName": farm.name,
-            "latitude": lat,
-            "longitude": lon,
             "state": state,
             "district": district,
             "found": False,
@@ -70,8 +66,6 @@ def get_farm_soil(
     return {
         "farmId": farm.id,
         "farmName": farm.name,
-        "latitude": lat,
-        "longitude": lon,
         "state": state,
         "district": district,
         "nitrogen": soil["nitrogen"],
