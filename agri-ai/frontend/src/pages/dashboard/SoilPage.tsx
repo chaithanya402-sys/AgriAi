@@ -48,7 +48,7 @@ const statusConfig: Record<
 }
 
 export function SoilPage() {
-  const { farms, selectedFarmId, setSelectedFarmId, currentFarm, loading: farmsLoading } = useFarm()
+  const { farms, selectedFarmId, setSelectedFarmId, currentFarm, activeLocation, loading: farmsLoading } = useFarm()
   const { data: analyzeResult, loading: analyzing, error: analyzeError, run } = useAsync<SoilAnalysisResult & { demo_mode?: boolean }>()
 
   const [form, setForm] = useState({
@@ -94,8 +94,6 @@ export function SoilPage() {
         // Required debug logs
         console.log("Selected Farm ID:", targetFarmId)
         console.log("Selected Farm:", activeFarm)
-        console.log("Latitude:", activeFarm.latitude)
-        console.log("Longitude:", activeFarm.longitude)
         console.log("Soil Data:", data)
 
         if (!data.found) {
@@ -227,9 +225,15 @@ export function SoilPage() {
             Soil Parameters
           </CardTitle>
           <CardDescription>
-            {activeFarm?.location
-              ? `Location: ${activeFarm.location}${activeFarm.latitude ? ` (${activeFarm.latitude}, ${activeFarm.longitude})` : ''}`
-              : 'Enter soil test values for analysis.'}
+            {(() => {
+              const state = (activeLocation.farmId === activeFarm?.id && activeLocation.state) || activeFarm?.state
+              const district = (activeLocation.farmId === activeFarm?.id && activeLocation.district) || activeFarm?.district
+              if (district && state) return `Location: ${district}, ${state}`
+              if (activeFarm?.location && !/^\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*$/.test(activeFarm.location) && !/lat|lon|coord/i.test(activeFarm.location)) {
+                return `Location: ${activeFarm.location}`
+              }
+              return activeFarm ? 'Location: —' : 'Enter soil test values for analysis.'
+            })()}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -248,7 +252,7 @@ export function SoilPage() {
                   <SelectContent>
                     {farms.map((farm) => (
                       <SelectItem key={farm.id} value={farm.id.toString()}>
-                        {farm.name} {farm.location ? `(${farm.location})` : ''}
+                        {farm.name} {farm.district && farm.state ? `(${farm.district}, ${farm.state})` : farm.location && !/^\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*$/.test(farm.location) ? `(${farm.location})` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -334,11 +338,15 @@ export function SoilPage() {
 
             <div className="flex items-center justify-between pt-2">
               <div className="text-xs text-neutral-500">
-                {activeFarm?.latitude && activeFarm?.longitude ? (
-                  <span>
-                    Farm Coordinates: <strong>{activeFarm.latitude}, {activeFarm.longitude}</strong>
-                  </span>
-                ) : null}
+                {(() => {
+                  const state = (activeLocation.farmId === activeFarm?.id && activeLocation.state) || activeFarm?.state
+                  const district = (activeLocation.farmId === activeFarm?.id && activeLocation.district) || activeFarm?.district
+                  return district && state ? (
+                    <span>
+                      Location: <strong>{district}, {state}</strong>
+                    </span>
+                  ) : null
+                })()}
               </div>
               <Button type="submit" disabled={analyzing || soilLoading}>
                 {analyzing ? <ButtonLoader label="Analyzing..." /> : 'Analyze Soil'}
@@ -347,6 +355,156 @@ export function SoilPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Village-level soil data panel — shown when AP dataset match found */}
+      {soilData?.found && !soilLoading && (soilData.ec != null || soilData.soilType || soilData.fertilityIndex) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between text-base">
+              <span className="flex items-center gap-2">
+                <Leaf className="h-4 w-4 text-brand" />
+                Village-Level Soil Profile
+              </span>
+              <Badge variant={
+                soilData.matchLevel === 1 ? 'success' :
+                soilData.matchLevel === 2 ? 'success' :
+                soilData.matchLevel === 3 ? 'info' : 'warning'
+              } className="text-xs">
+                {soilData.dataSource || 'Dataset match'}
+              </Badge>
+            </CardTitle>
+            {(soilData.mandal || soilData.village) && (
+              <CardDescription className="flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {[soilData.village, soilData.mandal, soilData.district].filter(Boolean).join(', ')}
+              </CardDescription>
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {soilData.ph != null && (
+                <div className="rounded-lg bg-neutral-50 p-3">
+                  <p className="text-xs text-neutral-500">Soil pH</p>
+                  <p className="text-base font-bold text-neutral-900">{soilData.ph}</p>
+                </div>
+              )}
+              {soilData.ec != null && (
+                <div className="rounded-lg bg-neutral-50 p-3">
+                  <p className="text-xs text-neutral-500">EC (dS/m)</p>
+                  <p className="text-base font-bold text-neutral-900">{soilData.ec}</p>
+                </div>
+              )}
+              {soilData.organicCarbon != null && soilData.organicCarbon !== 'Not available' && (
+                <div className="rounded-lg bg-neutral-50 p-3">
+                  <p className="text-xs text-neutral-500">Organic Carbon (%)</p>
+                  <p className="text-base font-bold text-neutral-900">{soilData.organicCarbon}</p>
+                </div>
+              )}
+              {soilData.nitrogen != null && (
+                <div className="rounded-lg bg-neutral-50 p-3">
+                  <p className="text-xs text-neutral-500">Available N (kg/ha)</p>
+                  <p className="text-base font-bold text-neutral-900">{soilData.nitrogen}</p>
+                </div>
+              )}
+              {soilData.phosphorus != null && (
+                <div className="rounded-lg bg-neutral-50 p-3">
+                  <p className="text-xs text-neutral-500">Available P₂O₅ (kg/ha)</p>
+                  <p className="text-base font-bold text-neutral-900">{soilData.phosphorus}</p>
+                </div>
+              )}
+              {soilData.potassium != null && (
+                <div className="rounded-lg bg-neutral-50 p-3">
+                  <p className="text-xs text-neutral-500">Available K₂O (kg/ha)</p>
+                  <p className="text-base font-bold text-neutral-900">{soilData.potassium}</p>
+                </div>
+              )}
+              {soilData.sulfur != null && (
+                <div className="rounded-lg bg-neutral-50 p-3">
+                  <p className="text-xs text-neutral-500">Sulfur (ppm)</p>
+                  <p className="text-base font-bold text-neutral-900">{soilData.sulfur}</p>
+                </div>
+              )}
+              {soilData.zinc != null && (
+                <div className="rounded-lg bg-neutral-50 p-3">
+                  <p className="text-xs text-neutral-500">Zinc (ppm)</p>
+                  <p className="text-base font-bold text-neutral-900">{soilData.zinc}</p>
+                </div>
+              )}
+              {soilData.iron != null && (
+                <div className="rounded-lg bg-neutral-50 p-3">
+                  <p className="text-xs text-neutral-500">Iron (ppm)</p>
+                  <p className="text-base font-bold text-neutral-900">{soilData.iron}</p>
+                </div>
+              )}
+              {soilData.copper != null && (
+                <div className="rounded-lg bg-neutral-50 p-3">
+                  <p className="text-xs text-neutral-500">Copper (ppm)</p>
+                  <p className="text-base font-bold text-neutral-900">{soilData.copper}</p>
+                </div>
+              )}
+              {soilData.manganese != null && (
+                <div className="rounded-lg bg-neutral-50 p-3">
+                  <p className="text-xs text-neutral-500">Manganese (ppm)</p>
+                  <p className="text-base font-bold text-neutral-900">{soilData.manganese}</p>
+                </div>
+              )}
+              {soilData.boron != null && (
+                <div className="rounded-lg bg-neutral-50 p-3">
+                  <p className="text-xs text-neutral-500">Boron (ppm)</p>
+                  <p className="text-base font-bold text-neutral-900">{soilData.boron}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Soil type + fertility index */}
+            <div className="mt-3 flex flex-wrap gap-3">
+              {soilData.soilType && (
+                <div className="rounded-lg border border-neutral-200 px-3 py-2">
+                  <p className="text-xs text-neutral-500">Soil Type</p>
+                  <p className="text-sm font-semibold text-neutral-900">{soilData.soilType}</p>
+                </div>
+              )}
+              {soilData.croppingSeason && (
+                <div className="rounded-lg border border-neutral-200 px-3 py-2">
+                  <p className="text-xs text-neutral-500">Cropping Season</p>
+                  <p className="text-sm font-semibold text-neutral-900">{soilData.croppingSeason}</p>
+                </div>
+              )}
+              {soilData.fertilityIndex && (
+                <div className={`rounded-lg border px-3 py-2 ${
+                  soilData.fertilityIndex === 'High' ? 'border-green-200 bg-green-50' :
+                  soilData.fertilityIndex === 'Low' ? 'border-red-200 bg-red-50' :
+                  'border-yellow-200 bg-yellow-50'
+                }`}>
+                  <p className="text-xs text-neutral-500">Fertility Index</p>
+                  <p className={`text-sm font-bold ${
+                    soilData.fertilityIndex === 'High' ? 'text-green-700' :
+                    soilData.fertilityIndex === 'Low' ? 'text-red-700' :
+                    'text-yellow-700'
+                  }`}>{soilData.fertilityIndex}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Advisory */}
+            {soilData.advisory && (
+              <div className="mt-3 rounded-lg bg-fresh-50 border border-fresh-200 p-3 flex items-start gap-2">
+                <Info className="h-4 w-4 text-brand mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-brand mb-0.5">Plot-Specific Advisory</p>
+                  <p className="text-sm text-neutral-700">{soilData.advisory}</p>
+                </div>
+              </div>
+            )}
+
+            {soilData.recordCount != null && soilData.recordCount > 0 && (
+              <p className="mt-2 text-xs text-neutral-400">
+                Based on {soilData.recordCount} matching soil sample{soilData.recordCount !== 1 ? 's' : ''}.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Loading state indicator */}
       {soilLoading && (

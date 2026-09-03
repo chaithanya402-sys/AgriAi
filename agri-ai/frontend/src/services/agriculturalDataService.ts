@@ -10,6 +10,8 @@ export interface ResolvedLocation {
   source: 'live' | 'farm_coordinates' | 'farm_saved' | 'farm_location_match' | 'farm_district_match' | 'none'
   lat?: number
   lon?: number
+  farm_id?: number
+  farm_name?: string
   message?: string
 }
 
@@ -83,6 +85,7 @@ const _cache = new Map<string, any>()
 export const agriculturalDataService = {
   /**
    * Resolve coordinates or farm fallback to State and District.
+   * Farm ID is strictly respected so different farms never share or pollute location cache.
    */
   async resolveLocation(coords?: { lat: number; lon: number } | null, farmId?: number | null): Promise<ResolvedLocation> {
     const params = new URLSearchParams()
@@ -95,7 +98,11 @@ export const agriculturalDataService = {
     }
 
     const query = params.toString()
-    const cacheKey = `loc:${query}`
+    // Explicitly namespace by farmId so different farms never cross-pollute
+    const cacheKey = farmId
+      ? `loc:farm_${farmId}:${coords?.lat ?? ''},${coords?.lon ?? ''}`
+      : `loc:live:${coords?.lat ?? ''},${coords?.lon ?? ''}`
+
     if (_cache.has(cacheKey)) {
       return _cache.get(cacheKey)
     }
@@ -180,6 +187,37 @@ export const agriculturalDataService = {
     const res = await request<YieldDataResponse>(url)
     _cache.set(key, res)
     return res
+  },
+
+  /**
+   * Invalidate location cache for a specific farm (or generic location cache).
+   * Called whenever the user switches farms to ensure Farm A's cached location is never reused for Farm B.
+   */
+  invalidateFarmCache(farmId?: number | null) {
+    if (farmId) {
+      for (const key of _cache.keys()) {
+        if (key.includes(`farm_${farmId}`) || key.includes(`farm_id=${farmId}`)) {
+          _cache.delete(key)
+        }
+      }
+    }
+    // Also clear any unresolved/generic location cache entries
+    for (const key of _cache.keys()) {
+      if (key.startsWith('loc:live:')) {
+        _cache.delete(key)
+      }
+    }
+  },
+
+  /**
+   * Clear all location-related cache entries.
+   */
+  clearLocationCache() {
+    for (const key of _cache.keys()) {
+      if (key.startsWith('loc:')) {
+        _cache.delete(key)
+      }
+    }
   },
 
   /**

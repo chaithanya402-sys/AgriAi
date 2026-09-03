@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useFarm } from '@/components/farm/FarmContext'
 import { farmApi } from '@/services/api'
 import { agriculturalDataService } from '@/services/agriculturalDataService'
+import { soilApi } from '@/services/modules'
 import { useAsync } from '@/hooks/useAsync'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/Card'
@@ -36,6 +37,10 @@ const emptyFarm = {
   location: '',
   latitude: '',
   longitude: '',
+  state: '',
+  district: '',
+  mandal: '',
+  village: '',
   total_area: '',
   area_unit: 'hectares',
   soil_type: '',
@@ -69,6 +74,26 @@ export function FarmManagementPage() {
 
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  // Dynamic mandal/village dropdowns from AP village dataset
+  const [availableMandals, setAvailableMandals] = useState<string[]>([])
+  const [availableVillages, setAvailableVillages] = useState<string[]>([])
+
+  // Load mandals when district changes
+  useEffect(() => {
+    if (!form.district) { setAvailableMandals([]); setAvailableVillages([]); return }
+    soilApi.listMandals(form.district)
+      .then((res) => setAvailableMandals(res.mandals || []))
+      .catch(() => setAvailableMandals([]))
+  }, [form.district])
+
+  // Load villages when mandal changes
+  useEffect(() => {
+    if (!form.district || !form.mandal) { setAvailableVillages([]); return }
+    soilApi.listVillages(form.district, form.mandal)
+      .then((res) => setAvailableVillages(res.villages || []))
+      .catch(() => setAvailableVillages([]))
+  }, [form.district, form.mandal])
 
   // Refetch after mutations
   useEffect(() => {
@@ -112,13 +137,15 @@ export function FarmManagementPage() {
             setForm((prev) => ({
               ...prev,
               location: `${resolved.district}, ${resolved.state}`,
+              state: resolved.state || prev.state,
+              district: resolved.district || prev.district,
             }))
-            setSuccess(`Location detected: ${resolved.district}, ${resolved.state} (${lat}, ${lon})`)
+            setSuccess(`Current Location: ${resolved.district}, ${resolved.state}`)
           } else {
-            setSuccess(`Coordinates captured: ${lat}, ${lon}`)
+            setSuccess('Current location captured.')
           }
         } catch {
-          setSuccess(`Coordinates captured: ${lat}, ${lon}`)
+          setSuccess('Current location captured.')
         } finally {
           setDetectingLocation(false)
         }
@@ -144,6 +171,10 @@ export function FarmManagementPage() {
       location: farm.location || '',
       latitude: farm.latitude?.toString() || '',
       longitude: farm.longitude?.toString() || '',
+      state: farm.state || '',
+      district: farm.district || '',
+      mandal: (farm as any).mandal || '',
+      village: (farm as any).village || '',
       total_area: farm.total_area?.toString() || '',
       area_unit: farm.area_unit || 'hectares',
       soil_type: farm.soil_type || '',
@@ -164,6 +195,10 @@ export function FarmManagementPage() {
       location: form.location || undefined,
       latitude: form.latitude ? Number(form.latitude) : undefined,
       longitude: form.longitude ? Number(form.longitude) : undefined,
+      state: form.state || undefined,
+      district: form.district || undefined,
+      mandal: form.mandal || undefined,
+      village: form.village || undefined,
       total_area: form.total_area ? Number(form.total_area) : undefined,
       area_unit: form.area_unit,
       soil_type: form.soil_type || undefined,
@@ -307,7 +342,7 @@ export function FarmManagementPage() {
                       onClick={handleGetCurrentLocation}
                       disabled={detectingLocation}
                       className="inline-flex items-center gap-1 text-xs text-brand font-medium hover:underline disabled:opacity-50"
-                      title="Use browser GPS to capture latitude and longitude"
+                      title="Use browser GPS to capture location"
                     >
                       {detectingLocation ? (
                         <LoadingSpinner className="h-3 w-3" />
@@ -325,25 +360,56 @@ export function FarmManagementPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Latitude</Label>
+                  <Label>District</Label>
                   <Input
-                    type="number"
-                    step="0.0001"
-                    placeholder="e.g. 19.9975"
-                    value={form.latitude}
-                    onChange={(e) => handleChange('latitude', e.target.value)}
+                    placeholder="e.g. Srikakulam"
+                    value={form.district}
+                    onChange={(e) => {
+                      handleChange('district', e.target.value)
+                      handleChange('mandal', '')
+                      handleChange('village', '')
+                    }}
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Longitude</Label>
-                  <Input
-                    type="number"
-                    step="0.0001"
-                    placeholder="e.g. 73.7898"
-                    value={form.longitude}
-                    onChange={(e) => handleChange('longitude', e.target.value)}
-                  />
+                  <Label>Mandal <span className="text-neutral-400 text-xs">(optional)</span></Label>
+                  {availableMandals.length > 0 ? (
+                    <select
+                      className="flex h-10 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-fresh-500 focus:outline-none focus:ring-2 focus:ring-fresh-500/30"
+                      value={form.mandal}
+                      onChange={(e) => { handleChange('mandal', e.target.value); handleChange('village', '') }}
+                    >
+                      <option value="">Select mandal...</option>
+                      {availableMandals.map((m) => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  ) : (
+                    <Input
+                      placeholder="e.g. Kaviti"
+                      value={form.mandal}
+                      onChange={(e) => handleChange('mandal', e.target.value)}
+                    />
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Village <span className="text-neutral-400 text-xs">(optional)</span></Label>
+                  {availableVillages.length > 0 ? (
+                    <select
+                      className="flex h-10 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-fresh-500 focus:outline-none focus:ring-2 focus:ring-fresh-500/30"
+                      value={form.village}
+                      onChange={(e) => handleChange('village', e.target.value)}
+                    >
+                      <option value="">Select village...</option>
+                      {availableVillages.map((v) => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                  ) : (
+                    <Input
+                      placeholder="e.g. Borivanka"
+                      value={form.village}
+                      onChange={(e) => handleChange('village', e.target.value)}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -467,12 +533,21 @@ export function FarmManagementPage() {
                       <CardTitle className="text-lg">{farm.name}</CardTitle>
                       {isActive && <Badge variant="primary">Active</Badge>}
                     </div>
-                    {farm.location && (
-                      <CardDescription className="flex items-center gap-1 mt-1">
-                        <MapPin className="h-3 w-3" />
-                        {farm.location}
-                      </CardDescription>
-                    )}
+                    {(() => {
+                      const locText =
+                        farm.district && farm.state
+                          ? `${farm.district}, ${farm.state}`
+                          : farm.location && !/^\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*$/.test(farm.location) && !/lat|lon|coord/i.test(farm.location)
+                            ? farm.location
+                            : null
+                      const mandalVillage = [(farm as any).village, (farm as any).mandal].filter(Boolean).join(', ')
+                      return locText ? (
+                        <CardDescription className="flex items-center gap-1 mt-1">
+                          <MapPin className="h-3 w-3" />
+                          {mandalVillage ? `${mandalVillage} — ` : ''}{locText}
+                        </CardDescription>
+                      ) : null
+                    })()}
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {!isActive && (

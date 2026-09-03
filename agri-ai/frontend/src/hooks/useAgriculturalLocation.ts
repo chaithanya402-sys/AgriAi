@@ -214,6 +214,8 @@ export function useAgriculturalLocation(selectedFarmId?: number): AgriculturalLo
         null,
       state: locState,
       district: locDistrict,
+      mandal: (activeLocation.farmId === activeFarmId ? activeLocation.mandal : null) ?? (activeFarm as any)?.mandal ?? null,
+      village: (activeLocation.farmId === activeFarmId ? activeLocation.village : null) ?? (activeFarm as any)?.village ?? null,
     },
   }
 }

@@ -311,109 +311,137 @@ def resolve_location(
     states_map = get_available_states()
 
     # 1. Selected Farm resolution
-    if farm_id is not None and db is not None:
-        farm = db.query(Farm).filter(Farm.id == farm_id).first()
-        if farm:
-            # 1a. Farm has latitude and longitude
-            if farm.latitude is not None and farm.longitude is not None and not (farm.latitude == 0.0 and farm.longitude == 0.0):
-                state, district = reverse_geocode(farm.latitude, farm.longitude)
-                if state:
+    if farm_id is not None:
+        local_db = False
+        if db is None:
+            from app.config.database import SessionLocal
+            db = SessionLocal()
+            local_db = True
+        try:
+            farm = db.query(Farm).filter(Farm.id == farm_id).first()
+            if farm:
+                # 1a. Farm has saved state & district (selected farm is source of truth)
+                if farm.state and farm.district:
                     canonical_state = None
-                    norm_state = state.strip().lower()
+                    norm_state = farm.state.strip().lower()
                     for k, v in states_map.items():
                         if k in norm_state or norm_state in k:
                             canonical_state = v
                             break
 
                     if canonical_state:
-                        # Verify and match canonical district from state dataset
-                        recs, matched_district = get_district_records(canonical_state, district or "")
-                        final_district = matched_district or district
+                        recs, matched_district = get_district_records(canonical_state, farm.district)
+                        coords = get_coords_for_district(canonical_state, matched_district or farm.district)
                         return {
                             "state": canonical_state,
-                            "district": final_district,
-                            "source": "farm_coordinates",
-                            "lat": farm.latitude,
-                            "lon": farm.longitude,
+                            "district": matched_district or farm.district,
+                            "source": "farm_saved",
+                            "lat": farm.latitude or (coords[0] if coords else None),
+                            "lon": farm.longitude or (coords[1] if coords else None),
                             "farm_id": farm.id,
                             "farm_name": farm.name,
                         }
 
-            # 1b. Farm has saved state & district
-            if farm.state and farm.district:
-                canonical_state = None
-                norm_state = farm.state.strip().lower()
-                for k, v in states_map.items():
-                    if k in norm_state or norm_state in k:
-                        canonical_state = v
-                        break
+                # 1b. Farm has coordinates saved or passed
+                farm_lat = farm.latitude if farm.latitude is not None and not (farm.latitude == 0.0) else lat
+                farm_lon = farm.longitude if farm.longitude is not None and not (farm.longitude == 0.0) else lon
+                if farm_lat is not None and farm_lon is not None and not (farm_lat == 0.0 and farm_lon == 0.0):
+                    state, district = reverse_geocode(farm_lat, farm_lon)
+                    if state:
+                        canonical_state = None
+                        norm_state = state.strip().lower()
+                        for k, v in states_map.items():
+                            if k in norm_state or norm_state in k:
+                                canonical_state = v
+                                break
 
-                if canonical_state:
-                    recs, matched_district = get_district_records(canonical_state, farm.district)
-                    coords = get_coords_for_district(canonical_state, matched_district or farm.district)
-                    return {
-                        "state": canonical_state,
-                        "district": matched_district or farm.district,
-                        "source": "farm_saved",
-                        "lat": farm.latitude or (coords[0] if coords else None),
-                        "lon": farm.longitude or (coords[1] if coords else None),
-                        "farm_id": farm.id,
-                        "farm_name": farm.name,
-                    }
+                        if canonical_state:
+                            recs, matched_district = get_district_records(canonical_state, district or "")
+                            final_district = matched_district or district
+                            return {
+                                "state": canonical_state,
+                                "district": final_district,
+                                "source": "farm_coordinates",
+                                "lat": farm_lat,
+                                "lon": farm_lon,
+                                "farm_id": farm.id,
+                                "farm_name": farm.name,
+                            }
 
-            # 1c. Farm has location string (e.g. 'nellore,Andhra pradesh' or 'kadapa')
-            if farm.location:
-                loc = farm.location.strip().lower()
+                # 1c. Farm has location string (e.g. 'nellore,Andhra pradesh' or 'kadapa')
+                if farm.location:
+                    loc = farm.location.strip().lower()
 
-                # First: Check if a state is specified in the location string
-                matched_state_canonical = None
-                for k, v in states_map.items():
-                    if k in loc:
-                        matched_state_canonical = v
-                        break
+                    # First: Check if a state is specified in the location string
+                    matched_state_canonical = None
+                    for k, v in states_map.items():
+                        if k in loc:
+                            matched_state_canonical = v
+                            break
 
-                # If state matched, look inside that state's districts for a match
-                if matched_state_canonical:
-                    df = load_state_dataset(matched_state_canonical)
-                    if df is not None and not df.empty and "District" in df.columns:
-                        dists = df["District"].dropna().unique().tolist()
-                        for d in dists:
-                            d_clean = d.strip().lower()
-                            # Check if district is in location string (e.g., 'nellore' or 'kadapa')
-                            if d_clean in loc or any(part.strip() in d_clean for part in loc.replace(",", " ").split() if len(part.strip()) >= 4):
-                                recs, matched_d = get_district_records(matched_state_canonical, d)
-                                coords = get_coords_for_district(matched_state_canonical, matched_d or d)
-                                return {
-                                    "state": matched_state_canonical,
-                                    "district": matched_d or d,
-                                    "source": "farm_location_match",
-                                    "lat": farm.latitude or (coords[0] if coords else None),
-                                    "lon": farm.longitude or (coords[1] if coords else None),
-                                    "farm_id": farm.id,
-                                    "farm_name": farm.name,
-                                }
+                    # If state matched, look inside that state's districts for a match
+                    if matched_state_canonical:
+                        df = load_state_dataset(matched_state_canonical)
+                        if df is not None and not df.empty and "District" in df.columns:
+                            dists = df["District"].dropna().unique().tolist()
+                            for d in dists:
+                                d_clean = d.strip().lower()
+                                if d_clean in loc or any(part.strip() in d_clean for part in loc.replace(",", " ").split() if len(part.strip()) >= 4):
+                                    recs, matched_d = get_district_records(matched_state_canonical, d)
+                                    coords = get_coords_for_district(matched_state_canonical, matched_d or d)
+                                    return {
+                                        "state": matched_state_canonical,
+                                        "district": matched_d or d,
+                                        "source": "farm_location_match",
+                                        "lat": farm.latitude or (coords[0] if coords else None),
+                                        "lon": farm.longitude or (coords[1] if coords else None),
+                                        "farm_id": farm.id,
+                                        "farm_name": farm.name,
+                                    }
 
-                # If no district found within the matched state, check all states' districts
-                for s_key, s_canonical in states_map.items():
-                    df = load_state_dataset(s_canonical)
-                    if df is not None and not df.empty and "District" in df.columns:
-                        dists = df["District"].dropna().unique().tolist()
-                        for d in dists:
-                            d_clean = d.strip().lower()
-                            if d_clean in loc or any(part.strip() in d_clean for part in loc.replace(",", " ").split() if len(part.strip()) >= 4):
-                                recs, matched_d = get_district_records(s_canonical, d)
-                                coords = get_coords_for_district(s_canonical, matched_d or d)
-                                return {
-                                    "state": s_canonical,
-                                    "district": matched_d or d,
-                                    "source": "farm_district_match",
-                                    "lat": farm.latitude or (coords[0] if coords else None),
-                                    "lon": farm.longitude or (coords[1] if coords else None),
-                                    "farm_id": farm.id,
-                                    "farm_name": farm.name,
-                                }
+                    # If no district found within the matched state, check all states' districts
+                    for s_key, s_canonical in states_map.items():
+                        df = load_state_dataset(s_canonical)
+                        if df is not None and not df.empty and "District" in df.columns:
+                            dists = df["District"].dropna().unique().tolist()
+                            for d in dists:
+                                d_clean = d.strip().lower()
+                                if d_clean in loc or any(part.strip() in d_clean for part in loc.replace(",", " ").split() if len(part.strip()) >= 4):
+                                    recs, matched_d = get_district_records(s_canonical, d)
+                                    coords = get_coords_for_district(s_canonical, matched_d or d)
+                                    return {
+                                        "state": s_canonical,
+                                        "district": matched_d or d,
+                                        "source": "farm_district_match",
+                                        "lat": farm.latitude or (coords[0] if coords else None),
+                                        "lon": farm.longitude or (coords[1] if coords else None),
+                                        "farm_id": farm.id,
+                                        "farm_name": farm.name,
+                                    }
 
-    # 2. Direct Coordinates passed to endpoint
+                # Farm found but location could not be resolved
+                return {
+                    "state": None,
+                    "district": None,
+                    "source": "none",
+                    "farm_id": farm.id,
+                    "farm_name": farm.name,
+                    "message": f"Location unavailable for farm {farm.name}",
+                }
+        finally:
+            if local_db:
+                db.close()
+
+        # If farm_id was provided but not found in DB
+        return {
+            "state": None,
+            "district": None,
+            "source": "none",
+            "farm_id": farm_id,
+            "message": "Farm not found",
+        }
+
+    # 2. Direct Coordinates passed to endpoint (e.g. live GPS without farm)
     if lat is not None and lon is not None and not (lat == 0.0 and lon == 0.0):
         state, district = reverse_geocode(lat, lon)
         if state:

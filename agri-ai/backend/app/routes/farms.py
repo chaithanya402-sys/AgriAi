@@ -12,7 +12,23 @@ router = APIRouter(prefix="/api/farms", tags=["farms"])
 
 @router.get("", response_model=List[FarmResponse])
 def list_farms(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return db.query(Farm).filter(Farm.user_id == user.id).order_by(Farm.created_at).all()
+    farms = db.query(Farm).filter(Farm.user_id == user.id).order_by(Farm.created_at).all()
+    from app.services import agricultural_dataset_service as ads
+    updated = False
+    for farm in farms:
+        if not (farm.state and farm.district):
+            loc = ads.resolve_location(farm_id=farm.id, db=db)
+            if loc.get("state") and loc.get("district"):
+                farm.state = loc["state"]
+                farm.district = loc["district"]
+                if not farm.latitude and loc.get("lat"):
+                    farm.latitude = loc["lat"]
+                if not farm.longitude and loc.get("lon"):
+                    farm.longitude = loc["lon"]
+                updated = True
+    if updated:
+        db.commit()
+    return farms
 
 
 @router.post("", response_model=FarmResponse, status_code=201)
@@ -58,6 +74,18 @@ def get_farm(farm_id: int, db: Session = Depends(get_db), user: User = Depends(g
     farm = db.query(Farm).filter(Farm.id == farm_id, Farm.user_id == user.id).first()
     if not farm:
         raise HTTPException(status_code=404, detail="Farm not found")
+    from app.services import agricultural_dataset_service as ads
+    if not (farm.state and farm.district):
+        loc = ads.resolve_location(farm_id=farm.id, db=db)
+        if loc.get("state") and loc.get("district"):
+            farm.state = loc["state"]
+            farm.district = loc["district"]
+            if not farm.latitude and loc.get("lat"):
+                farm.latitude = loc["lat"]
+            if not farm.longitude and loc.get("lon"):
+                farm.longitude = loc["lon"]
+            db.commit()
+            db.refresh(farm)
     return farm
 
 

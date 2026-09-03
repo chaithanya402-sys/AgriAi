@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app import data_loader
 from app.config.database import get_db
 from app.services import agricultural_dataset_service as ads
+from app.services import village_soil_service as vss
 
 router = APIRouter(prefix="/api/data", tags=["data"])
 
@@ -16,8 +17,20 @@ def resolve_location_endpoint(
     farm_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
 ) -> Dict:
-    """Resolve location to State and District from live GPS coords or farm fallback."""
+    """Resolve location to State, District (and mandal/village where available)."""
     result = ads.resolve_location(lat=lat, lon=lon, farm_id=farm_id, db=db)
+
+    # Enrich with nearest village record mandal/village when coords are available
+    resolved_lat = result.get("lat") or lat
+    resolved_lon = result.get("lon") or lon
+    resolved_district = result.get("district")
+
+    if resolved_district and resolved_lat and resolved_lon and vss.is_available():
+        vr = vss.lookup_by_coords(resolved_lat, resolved_lon)
+        if vr:
+            result["mandal"] = vr.get("mandal")
+            result["village"] = vr.get("village")
+
     return result
 
 

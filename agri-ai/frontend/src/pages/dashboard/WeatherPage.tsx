@@ -78,14 +78,14 @@ const STATUS_ICONS = {
 }
 
 export function WeatherPage() {
-  const { currentFarm } = useFarm()
+  const { currentFarm, activeLocation } = useFarm()
 
   const coords = useMemo(() => {
-    const lat = currentFarm?.latitude
-    const lon = currentFarm?.longitude
+    const lat = (activeLocation.farmId === currentFarm?.id ? activeLocation.latitude : null) ?? currentFarm?.latitude
+    const lon = (activeLocation.farmId === currentFarm?.id ? activeLocation.longitude : null) ?? currentFarm?.longitude
     if (typeof lat !== 'number' || typeof lon !== 'number') return null
     return { lat, lon }
-  }, [currentFarm])
+  }, [currentFarm, activeLocation])
 
   const current = useAsync<CurrentWeather>()
   const forecast = useAsync<ForecastResponse>()
@@ -141,8 +141,8 @@ export function WeatherPage() {
         <Card>
           <CardContent className="py-8">
             <EmptyState
-              title="Farm coordinates missing"
-              description="This farm has no latitude / longitude saved. Add its location in Farm Management to fetch live weather, or use a farm with an address."
+              title="Farm location missing"
+              description="This farm has no location saved. Add its location in Farm Management to fetch live weather, or use a farm with an address."
             />
           </CardContent>
         </Card>
@@ -171,8 +171,15 @@ export function WeatherPage() {
         <span>
           Showing weather for{' '}
           <span className="font-semibold">{currentFarm.name}</span>
-          {currentFarm.location ? ` — ${currentFarm.location}` : ''} (Lat {formatNumber(coords.lat, 4)}, Lon{' '}
-          {formatNumber(coords.lon, 4)})
+          {(() => {
+            const state = (activeLocation.farmId === currentFarm.id && activeLocation.state) || currentFarm.state
+            const district = (activeLocation.farmId === currentFarm.id && activeLocation.district) || currentFarm.district
+            if (district && state) return ` — ${district}, ${state}`
+            if (currentFarm.location && !/^\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*$/.test(currentFarm.location) && !/lat|lon|coord/i.test(currentFarm.location)) {
+              return ` — ${currentFarm.location}`
+            }
+            return ''
+          })()}
         </span>
       </Alert>
 

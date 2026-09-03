@@ -6,11 +6,29 @@ export interface FarmSoilData {
   farmName?: string
   state?: string
   district?: string
+  mandal?: string | null
+  village?: string | null
+  // village-level fields (AP 105k dataset)
+  ph?: number
+  ec?: number
+  organicCarbon?: number | string
   nitrogen?: number
   phosphorus?: number
   potassium?: number
-  ph?: number
-  organicCarbon?: string
+  sulfur?: number
+  zinc?: number
+  iron?: number
+  copper?: number
+  manganese?: number
+  boron?: number
+  soilType?: string
+  croppingSeason?: string
+  fertilityIndex?: string
+  advisory?: string
+  dataSource?: string
+  matchLevel?: number
+  recordCount?: number
+  // legacy fallback fields
   moisture?: number
   soilTypes?: string[]
   irrigationTypes?: string[]
@@ -29,6 +47,13 @@ export interface FarmSoilData {
 export const soilApi = {
   analyze: (data: Record<string, unknown>) => request('/soil/analyze', { method: 'POST', body: data }),
   getFarmSoil: (farmId: number) => request<FarmSoilData>(`/soil/farm/${farmId}`),
+  listDistricts: () => request<{ districts: string[] }>('/soil/districts'),
+  listMandals: (district: string) =>
+    request<{ mandals: string[] }>(`/soil/mandals?district=${encodeURIComponent(district)}`),
+  listVillages: (district: string, mandal: string) =>
+    request<{ villages: string[] }>(
+      `/soil/villages?district=${encodeURIComponent(district)}&mandal=${encodeURIComponent(mandal)}`
+    ),
 }
 
 // ---- Crop recommendation ----

@@ -191,7 +191,7 @@ export function IrrigationPage() {
               <SelectContent>
                 {farms.map((f) => (
                   <SelectItem key={f.id} value={String(f.id)}>
-                    {f.name} {f.location ? `(${f.location})` : ''}
+                    {f.name}{f.district && f.state ? ` (${f.district}, ${f.state})` : (f.location && !/^\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*$/.test(f.location) && !/lat|lon|coord/i.test(f.location)) ? ` (${f.location})` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>

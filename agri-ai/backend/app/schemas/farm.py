@@ -27,6 +27,8 @@ class FarmCreate(BaseModel):
     location: Optional[str] = None
     state: Optional[str] = None
     district: Optional[str] = None
+    mandal: Optional[str] = None
+    village: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     total_area: Optional[float] = None
@@ -41,6 +43,8 @@ class FarmUpdate(BaseModel):
     location: Optional[str] = None
     state: Optional[str] = None
     district: Optional[str] = None
+    mandal: Optional[str] = None
+    village: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     total_area: Optional[float] = None
@@ -57,6 +61,8 @@ class FarmResponse(BaseModel):
     location: Optional[str] = None
     state: Optional[str] = None
     district: Optional[str] = None
+    mandal: Optional[str] = None
+    village: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     total_area: Optional[float] = None

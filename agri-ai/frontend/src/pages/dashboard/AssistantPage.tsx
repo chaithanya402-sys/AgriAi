@@ -155,8 +155,14 @@ export function AssistantPage() {
       {currentFarm && (
         <div className="flex items-center gap-2 text-sm text-neutral-600">
           <Badge variant="primary">Active farm</Badge>
-          <span className="font-medium text-neutral-800">{currentFarm.name}</span>
-          {currentFarm.location && <span className="text-neutral-400">· {currentFarm.location}</span>}
+          {(() => {
+            const locText = currentFarm.district && currentFarm.state
+              ? `${currentFarm.district}, ${currentFarm.state}`
+              : currentFarm.location && !/^\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*$/.test(currentFarm.location) && !/lat|lon|coord/i.test(currentFarm.location)
+                ? currentFarm.location
+                : null
+            return locText ? <span className="text-neutral-400">· {locText}</span> : null
+          })()}
         </div>
       )}
 

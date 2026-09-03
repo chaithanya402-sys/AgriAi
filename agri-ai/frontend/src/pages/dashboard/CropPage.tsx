@@ -272,7 +272,7 @@ export function CropPage() {
                   <SelectContent>
                     {farms.map((farm) => (
                       <SelectItem key={farm.id} value={farm.id.toString()}>
-                        {farm.name}
+                        {farm.name}{farm.district && farm.state ? ` (${farm.district}, ${farm.state})` : (farm.location && !/^\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*$/.test(farm.location) && !/lat|lon|coord/i.test(farm.location)) ? ` (${farm.location})` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>

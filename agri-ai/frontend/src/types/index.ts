@@ -30,6 +30,10 @@ export interface Farm {
   user_id: number
   name: string
   location?: string | null
+  state?: string | null
+  district?: string | null
+  mandal?: string | null
+  village?: string | null
   latitude?: number | null
   longitude?: number | null
   total_area?: number | null
