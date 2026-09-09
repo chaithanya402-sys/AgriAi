@@ -20,10 +20,10 @@ def test_all():
         assert s["organic_carbon"] == "Not available"
     print(f"  [PASS] Nellore Soil: N={s['nitrogen']}, P={s['phosphorus']}, K={s['potassium']}, pH={s['ph']}, Moisture={s['moisture']}%, OC={s['organic_carbon']}")
 
-    print("\n=== 2. Testing Telangana Karimnagar Dataset Loading ===")
-    s_tg = ads.get_soil_data("Telangana", "Karimnagar")
-    assert s_tg["found"] is True
-    print(f"  [PASS] Karimnagar Soil: Records={s_tg['record_count']}, N={s_tg['nitrogen']}, P={s_tg['phosphorus']}, K={s_tg['potassium']}, pH={s_tg['ph']}, Moisture={s_tg['moisture']}%")
+    print("\n=== 2. Testing Andhra Pradesh Vizianagaram Dataset Loading ===")
+    s_vz = ads.get_soil_data("Andhra Pradesh", "Vizianagaram")
+    assert s_vz["found"] is True
+    print(f"  [PASS] Vizianagaram Soil: Records={s_vz['record_count']}, N={s_vz['nitrogen']}, P={s_vz['phosphorus']}, K={s_vz['potassium']}, pH={s_vz['ph']}, Moisture={s_vz['moisture']}%")
 
     print("\n=== 3. Testing Crop Data & Climate Parameters ===")
     cd = ads.get_crop_data("Andhra Pradesh", "Nellore")
@@ -55,11 +55,12 @@ def test_all():
     assert live_ap["source"] == "live"
     print(f"  [PASS] (14.4426, 79.9865) resolved to State: {live_ap['state']}, District: {live_ap['district']}")
 
-    live_tg = ads.resolve_location(lat=18.4386, lon=79.1288)
-    assert live_tg["state"] == "Telangana"
-    assert live_tg["district"] == "Karimnagar"
-    assert live_tg["source"] == "live"
-    print(f"  [PASS] (18.4386, 79.1288) resolved to State: {live_tg['state']}, District: {live_tg['district']}")
+    live_tekkali = ads.resolve_location(lat=18.1898, lon=83.3885)
+    assert live_tekkali["state"] == "Andhra Pradesh"
+    assert live_tekkali["district"] == "Vizianagaram"
+    assert live_tekkali["village"] == "Tekkali"
+    assert live_tekkali["source"] == "live"
+    print(f"  [PASS] (18.1898, 83.3885) resolved to State: {live_tekkali['state']}, District: {live_tekkali['district']}, Village: {live_tekkali['village']}")
 
     print("\n=== 7. Testing Missing District Handling ===")
     missing = ads.get_soil_data("Andhra Pradesh", "NonExistentDistrictXYZ")

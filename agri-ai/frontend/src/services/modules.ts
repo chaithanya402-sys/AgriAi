@@ -1,5 +1,14 @@
 import request from './api'
-import type { NutrientStatus } from '@/types'
+import type {
+  NutrientStatus,
+  MarketPricesResponse,
+  MarketSummaryData,
+  DistrictSummaryItem,
+  MSPBenchmarkItem,
+  MarketDistrictInfo,
+  MarketCommodityInfo,
+  MarketLocationResolution,
+} from '@/types'
 
 export interface FarmSoilData {
   farmId: number
@@ -97,9 +106,68 @@ export const riskApi = {
   assess: (data: Record<string, unknown>) => request('/risk/assess', { method: 'POST', body: data }),
 }
 
+export interface MarketFilterParams {
+  crop?: string
+  district?: string
+  commodity_group?: string
+  market_type?: string
+  price_trend?: string
+  trading_channel?: string
+  search?: string
+  page?: number
+  limit?: number
+  sort_by?: string
+  sort_order?: 'asc' | 'desc'
+}
+
 // ---- Market ----
 export const marketApi = {
-  prices: (crop?: string) => request(crop ? `/market/prices?crop=${crop}` : '/market/prices'),
+  prices: (params?: MarketFilterParams | string) => {
+    if (typeof params === 'string') {
+      return request<MarketPricesResponse>(params && params !== 'all' ? `/market/prices?crop=${encodeURIComponent(params)}` : '/market/prices')
+    }
+    if (!params) {
+      return request<MarketPricesResponse>('/market/prices')
+    }
+    const query = new URLSearchParams()
+    if (params.crop && params.crop !== 'all') query.set('crop', params.crop)
+    if (params.district && params.district !== 'all') query.set('district', params.district)
+    if (params.commodity_group && params.commodity_group !== 'all') query.set('commodity_group', params.commodity_group)
+    if (params.market_type && params.market_type !== 'all') query.set('market_type', params.market_type)
+    if (params.price_trend && params.price_trend !== 'all') query.set('price_trend', params.price_trend)
+    if (params.trading_channel && params.trading_channel !== 'all') query.set('trading_channel', params.trading_channel)
+    if (params.search) query.set('search', params.search)
+    if (params.page) query.set('page', String(params.page))
+    if (params.limit) query.set('limit', String(params.limit))
+    if (params.sort_by) query.set('sort_by', params.sort_by)
+    if (params.sort_order) query.set('sort_order', params.sort_order)
+    const qs = query.toString()
+    return request<MarketPricesResponse>(qs ? `/market/prices?${qs}` : '/market/prices')
+  },
+  summary: (district?: string) =>
+    request<MarketSummaryData>(
+      district && district !== 'all'
+        ? `/market/summary?district=${encodeURIComponent(district)}`
+        : '/market/summary'
+    ),
+  districts: () => request<MarketDistrictInfo[]>('/market/districts'),
+  commodities: () => request<MarketCommodityInfo[]>('/market/commodities'),
+  districtSummary: (params?: { district?: string; crop?: string; limit?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.district && params.district !== 'all') query.set('district', params.district)
+    if (params?.crop && params.crop !== 'all') query.set('crop', params.crop)
+    if (params?.limit) query.set('limit', String(params.limit))
+    const qs = query.toString()
+    return request<DistrictSummaryItem[]>(qs ? `/market/district-summary?${qs}` : '/market/district-summary')
+  },
+  msp: (district?: string) =>
+    request<MSPBenchmarkItem[]>(
+      district && district !== 'all'
+        ? `/market/msp?district=${encodeURIComponent(district)}`
+        : '/market/msp'
+    ),
+  resolveLocation: (lat: number, lon: number) =>
+    request<MarketLocationResolution>(`/market/resolve-location?lat=${lat}&lon=${lon}`),
 }
 
 // ---- Profit ----

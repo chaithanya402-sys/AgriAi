@@ -25,11 +25,23 @@ def resolve_location_endpoint(
     resolved_lon = result.get("lon") or lon
     resolved_district = result.get("district")
 
+    # Fast-path for Centurion University (Tekkali village, Nellimarla mandal, Vizianagaram)
+    if resolved_lat is not None and resolved_lon is not None and vss.is_centurion_university_coords(resolved_lat, resolved_lon):
+        result["state"] = "Andhra Pradesh"
+        result["district"] = "Vizianagaram"
+        result["mandal"] = "Nellimarla"
+        result["village"] = "Tekkali"
+        result["location"] = "Tekkali, Nellimarla, Vizianagaram, Andhra Pradesh"
+        return result
+
     if resolved_district and resolved_lat and resolved_lon and vss.is_available():
-        vr = vss.lookup_by_coords(resolved_lat, resolved_lon)
+        vr = vss.lookup_by_coords(resolved_lat, resolved_lon, district=resolved_district)
         if vr:
-            result["mandal"] = vr.get("mandal")
-            result["village"] = vr.get("village")
+            # Only adopt mandal/village if within the same district
+            vr_dist = vr.get("district", "").strip().lower()
+            if not resolved_district or vr_dist == resolved_district.strip().lower() or vr_dist in resolved_district.lower():
+                result["mandal"] = vr.get("mandal")
+                result["village"] = vr.get("village")
 
     return result
 

@@ -27,15 +27,11 @@ logger = logging.getLogger(__name__)
 
 # Candidate directories for state datasets
 _DIR_CANDIDATES = [
-    r"C:\Users\palla\Downloads\CropYield_State_Wise_Datasets",
     os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
         "datasets",
     ),
-    os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-        "datasets",
-    ),
+    r"C:\Users\palla\Downloads\CropYield_State_Wise_Datasets",
 ]
 
 _STATE_CACHE: Dict[str, pd.DataFrame] = {}
@@ -46,7 +42,7 @@ _GEOCODE_CACHE: Dict[str, Tuple[Optional[str], Optional[str]]] = {}  # "lat,lon"
 def _get_dataset_dir() -> str:
     for d in _DIR_CANDIDATES:
         if d and os.path.isdir(d):
-            files = glob.glob(os.path.join(d, "*.xlsx"))
+            files = [f for f in glob.glob(os.path.join(d, "*.xlsx")) if not os.path.basename(f).startswith("AP_")]
             if files:
                 return d
     # Default fallback
@@ -248,6 +244,14 @@ def reverse_geocode(lat: float, lon: float) -> Tuple[Optional[str], Optional[str
     if cache_key in _GEOCODE_CACHE:
         return _GEOCODE_CACHE[cache_key]
 
+    # Check Centurion University (CUTM AP), Tekkali Village, Nelimarla Mandal, Vizianagaram
+    if (
+        (18.170 <= lat <= 18.215 and 83.370 <= lon <= 83.415)
+        or (17.875 <= lat <= 17.915 and 83.285 <= lon <= 83.320)
+    ):
+        _GEOCODE_CACHE[cache_key] = ("Andhra Pradesh", "Vizianagaram")
+        return "Andhra Pradesh", "Vizianagaram"
+
     # 1. Check if coordinates are close to a known district centroid (< ~40km)
     for (state, district), (c_lat, c_lon) in DISTRICT_COORDINATES.items():
         if (lat - c_lat) ** 2 + (lon - c_lon) ** 2 < 0.15:
@@ -335,6 +339,8 @@ def resolve_location(
                         return {
                             "state": canonical_state,
                             "district": matched_district or farm.district,
+                            "mandal": getattr(farm, "mandal", None),
+                            "village": getattr(farm, "village", None),
                             "source": "farm_saved",
                             "lat": farm.latitude or (coords[0] if coords else None),
                             "lon": farm.longitude or (coords[1] if coords else None),
@@ -358,9 +364,12 @@ def resolve_location(
                         if canonical_state:
                             recs, matched_district = get_district_records(canonical_state, district or "")
                             final_district = matched_district or district
+                            is_cutm = (18.170 <= farm_lat <= 18.215 and 83.370 <= farm_lon <= 83.415) or (17.875 <= farm_lat <= 17.915 and 83.285 <= farm_lon <= 83.320)
                             return {
                                 "state": canonical_state,
                                 "district": final_district,
+                                "mandal": getattr(farm, "mandal", None) or ("Nellimarla" if is_cutm else None),
+                                "village": getattr(farm, "village", None) or ("Tekkali" if is_cutm else None),
                                 "source": "farm_coordinates",
                                 "lat": farm_lat,
                                 "lon": farm_lon,
@@ -392,6 +401,8 @@ def resolve_location(
                                     return {
                                         "state": matched_state_canonical,
                                         "district": matched_d or d,
+                                        "mandal": getattr(farm, "mandal", None),
+                                        "village": getattr(farm, "village", None),
                                         "source": "farm_location_match",
                                         "lat": farm.latitude or (coords[0] if coords else None),
                                         "lon": farm.longitude or (coords[1] if coords else None),
@@ -412,6 +423,8 @@ def resolve_location(
                                     return {
                                         "state": s_canonical,
                                         "district": matched_d or d,
+                                        "mandal": getattr(farm, "mandal", None),
+                                        "village": getattr(farm, "village", None),
                                         "source": "farm_district_match",
                                         "lat": farm.latitude or (coords[0] if coords else None),
                                         "lon": farm.longitude or (coords[1] if coords else None),
@@ -454,9 +467,12 @@ def resolve_location(
 
             if canonical_state:
                 recs, matched_district = get_district_records(canonical_state, district or "")
+                is_cutm = (18.170 <= lat <= 18.215 and 83.370 <= lon <= 83.415) or (17.875 <= lat <= 17.915 and 83.285 <= lon <= 83.320)
                 return {
                     "state": canonical_state,
                     "district": matched_district or district,
+                    "mandal": "Nellimarla" if is_cutm else None,
+                    "village": "Tekkali" if is_cutm else None,
                     "source": "live",
                     "lat": lat,
                     "lon": lon,

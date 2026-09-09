@@ -134,13 +134,17 @@ export function FarmManagementPage() {
         try {
           const resolved = await agriculturalDataService.resolveLocation({ lat, lon })
           if (resolved.state && resolved.district) {
+            const locParts = [resolved.village, resolved.mandal, resolved.district, resolved.state].filter(Boolean)
+            const fullLoc = locParts.length > 0 ? locParts.join(', ') : `${resolved.district}, ${resolved.state}`
             setForm((prev) => ({
               ...prev,
-              location: `${resolved.district}, ${resolved.state}`,
+              location: fullLoc,
               state: resolved.state || prev.state,
               district: resolved.district || prev.district,
+              mandal: resolved.mandal || prev.mandal,
+              village: resolved.village || prev.village,
             }))
-            setSuccess(`Current Location: ${resolved.district}, ${resolved.state}`)
+            setSuccess(`Current Location: ${fullLoc}`)
           } else {
             setSuccess('Current location captured.')
           }
@@ -381,11 +385,14 @@ export function FarmManagementPage() {
                       onChange={(e) => { handleChange('mandal', e.target.value); handleChange('village', '') }}
                     >
                       <option value="">Select mandal...</option>
+                      {form.mandal && !availableMandals.includes(form.mandal) && (
+                        <option value={form.mandal}>{form.mandal}</option>
+                      )}
                       {availableMandals.map((m) => <option key={m} value={m}>{m}</option>)}
                     </select>
                   ) : (
                     <Input
-                      placeholder="e.g. Kaviti"
+                      placeholder="e.g. Nellimarla"
                       value={form.mandal}
                       onChange={(e) => handleChange('mandal', e.target.value)}
                     />
@@ -401,11 +408,14 @@ export function FarmManagementPage() {
                       onChange={(e) => handleChange('village', e.target.value)}
                     >
                       <option value="">Select village...</option>
+                      {form.village && !availableVillages.includes(form.village) && (
+                        <option value={form.village}>{form.village}</option>
+                      )}
                       {availableVillages.map((v) => <option key={v} value={v}>{v}</option>)}
                     </select>
                   ) : (
                     <Input
-                      placeholder="e.g. Borivanka"
+                      placeholder="e.g. Tekkali"
                       value={form.village}
                       onChange={(e) => handleChange('village', e.target.value)}
                     />

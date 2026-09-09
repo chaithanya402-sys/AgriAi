@@ -60,14 +60,15 @@ python -m venv .venv
 # Windows: .venv\Scripts\activate   |   macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-uvicorn app.main:app --reload
+# Windows / macOS / Linux:
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 - API docs at http://localhost:8000/docs
 - Health check: http://localhost:8000/api/health
 - Default DB is SQLite (`agriai.db`). To use Postgres, set `DATABASE_URL` in `.env`.
 
-### 2. Frontend
+### 2. Web Application
 
 ```bash
 cd frontend
@@ -76,8 +77,31 @@ cp .env.example .env
 npm run dev
 ```
 
-Open http://localhost:5173. The Vite dev server proxies `/api` to the backend at
+Open http://localhost:5173. The web dev server proxies `/api` to the backend at
 `http://localhost:8000`, so the frontend never talks to external services directly.
+
+### 3. Mobile Application (Expo React Native)
+
+```bash
+cd mobile
+npm install
+npx expo start
+```
+
+**Steps to run on your phone:**
+1. Install **Expo Go** on your Android device (Google Play Store) or iPhone (Apple App Store).
+2. Connect your phone and computer to the **same Wi-Fi network**.
+3. Run `npx expo start` in the `mobile` folder.
+4. Scan the interactive **Expo QR code** generated in your terminal:
+   - **Android**: Tap "Scan QR code" in the Expo Go app.
+   - **iOS**: Scan using the default Camera app and tap the "Open in Expo Go" banner.
+5. The AgriAI mobile application will open directly on your phone!
+
+**Connection problems? (e.g. firewalls or different networks):**
+Run with the tunnel flag:
+```bash
+npx expo start --tunnel
+```
 
 ---
 

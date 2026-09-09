@@ -37,9 +37,9 @@ _SOURCE_DIR = os.environ.get(
 
 
 def _discover_files() -> List[str]:
-    """Find the state-wise xlsx files, preferring an explicit env override."""
+    """Find the state-wise xlsx files, preferring repo datasets folder."""
     candidates = []
-    for base in [os.environ.get("AGRI_DATASETS_DIR"), _SOURCE_DIR, _DEFAULT_DATA_DIR]:
+    for base in [os.environ.get("AGRI_DATASETS_DIR"), _DEFAULT_DATA_DIR, _SOURCE_DIR]:
         if not base or not os.path.isdir(base):
             continue
         candidates = sorted(glob.glob(os.path.join(base, "*.xlsx")))
@@ -47,9 +47,8 @@ def _discover_files() -> List[str]:
             break
     if not candidates:
         raise FileNotFoundError(
-            "CropYield state-wise datasets not found. Set AGRI_DATASETS_DIR to the "
-            f"folder containing the 36 *.xlsx files (tried: {_SOURCE_DIR}, "
-            f"{_DEFAULT_DATA_DIR})."
+            "CropYield datasets not found. Set AGRI_DATASETS_DIR or ensure Andhra Pradesh.xlsx "
+            f"exists in {_DEFAULT_DATA_DIR}."
         )
     return candidates
 

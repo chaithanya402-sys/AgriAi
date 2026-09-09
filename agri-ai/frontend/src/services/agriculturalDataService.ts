@@ -7,6 +7,9 @@ import request from './api'
 export interface ResolvedLocation {
   state: string | null
   district: string | null
+  mandal?: string | null
+  village?: string | null
+  location?: string
   source: 'live' | 'farm_coordinates' | 'farm_saved' | 'farm_location_match' | 'farm_district_match' | 'none'
   lat?: number
   lon?: number

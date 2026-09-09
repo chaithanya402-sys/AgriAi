@@ -141,3 +141,138 @@ export interface DashboardOverview {
     total_fields: number
   }
 }
+
+export interface MarketPriceItem {
+  crop: string
+  market: string
+  price_per_tonne: number
+  currency: string
+  source: string
+  demo_mode: boolean
+  date: string
+  modal_price_rs_qtl?: number
+  min_price_rs_qtl?: number
+  max_price_rs_qtl?: number
+  arrival_quantity_qtl?: number
+  unit_of_price?: string
+  variety?: string
+  grade?: string
+  district?: string
+  mandal?: string
+  village?: string
+  region?: string
+  market_type?: string
+  commodity_group?: string
+  price_trend?: string
+  trading_channel?: string
+  reporting_date?: string
+  msp_benchmark?: number
+  msp_diff_pct?: number
+}
+
+export interface MarketPricesResponse {
+  prices: MarketPriceItem[]
+  as_of: string
+  demo_mode: boolean
+  total?: number
+  page?: number
+  limit?: number
+  total_pages?: number
+}
+
+export interface MarketSummaryData {
+  total_records: number
+  total_arrivals_qtl: number
+  avg_modal_price_rs_qtl: number
+  avg_price_per_tonne: number
+  distinct_commodities: number
+  distinct_districts: number
+  distinct_markets: number
+  date_range: { start: string; end: string }
+  trends: {
+    bullish: number
+    stable: number
+    bearish: number
+    bullish_pct: number
+    stable_pct: number
+    bearish_pct: number
+  }
+  trading_channels: Record<string, number>
+  market_types: Record<string, number>
+  top_commodities: {
+    commodity: string
+    commodity_group: string
+    total_arrivals_qtl: number
+    avg_price_rs_qtl: number
+    record_count: number
+  }[]
+  top_mandis: {
+    market_name: string
+    district: string
+    market_type: string
+    record_count: number
+    total_arrivals_qtl: number
+    avg_price_rs_qtl: number
+  }[]
+  msp_metrics: {
+    applicable_crops: number
+    crops_at_or_above_msp: number
+    compliance_pct: number
+  }
+  is_district_filtered?: boolean
+  filtered_district?: string | null
+}
+
+export interface MarketLocationResolution {
+  district: string
+  matched_district: string
+  state: string
+  lat: number
+  lon: number
+  distance_km?: number
+  source: string
+  is_exact_ap: boolean
+  message: string
+}
+
+export interface DistrictSummaryItem {
+  district: string
+  commodity_name: string
+  record_count: number
+  total_arrivals_qtl: number
+  avg_modal_price_rs_qtl: number
+  min_trade_price: number
+  max_trade_price: number
+}
+
+export interface MSPBenchmarkItem {
+  commodity_name: string
+  commodity_group: string
+  msp_price_rs_qtl: number
+  support_mechanism: string
+  standard_unit: string
+  avg_market_price_rs_qtl?: number
+  min_market_price_rs_qtl?: number
+  max_market_price_rs_qtl?: number
+  diff_pct?: number
+  status: string
+}
+
+export interface MarketDistrictInfo {
+  district: string
+  region?: string
+  record_count: number
+  market_count: number
+  commodity_count: number
+  total_arrivals_qtl: number
+}
+
+export interface MarketCommodityInfo {
+  commodity_name: string
+  commodity_group: string
+  record_count: number
+  avg_modal_price_rs_qtl: number
+  min_price_rs_qtl: number
+  max_price_rs_qtl: number
+  total_arrivals_qtl: number
+}

@@ -109,6 +109,12 @@ export function FarmOverviewCard({
           <div className="sm:w-48 lg:w-56 flex items-center justify-center bg-green-50/50 p-4 border-t sm:border-t-0 sm:border-l border-neutral-100">
             <AndhraPradeshMap
               activeDistrict={displayDistrict}
+              activeState={displayState}
+              mandal={displayMandal}
+              village={displayVillage}
+              latitude={farm.latitude}
+              longitude={farm.longitude}
+              farmName={farm.name}
               className="w-full"
             />
           </div>

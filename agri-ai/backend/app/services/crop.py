@@ -1,5 +1,5 @@
 """Crop Recommendation service. Routes to demo or real model based on DEMO_MODE."""
-from typing import Dict, List
+from typing import Dict, List, Optional
 from app.config.settings import settings
 from app.ml import demo_models
 from app.ml.real_models import RealCropRecommendation

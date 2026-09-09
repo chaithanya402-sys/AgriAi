@@ -96,17 +96,47 @@ def _agg(subset: pd.DataFrame) -> Dict[str, Any]:
 
 # ── public lookup functions ───────────────────────────────────────────────────
 
-def lookup_by_coords(lat: float, lon: float,
-                     max_dist_deg: float = 0.15) -> Optional[Dict[str, Any]]:
-    """Return nearest record within max_dist_deg degrees (≈15 km)."""
+def is_centurion_university_coords(lat: float, lon: float) -> bool:
+    """Detect if coordinates are in or around Centurion University (CUTM AP), Tekkali village, Nelimarla mandal, Vizianagaram."""
+    return (
+        (18.170 <= lat <= 18.215 and 83.370 <= lon <= 83.415)
+        or (17.875 <= lat <= 17.915 and 83.285 <= lon <= 83.320)
+    )
+
+
+def lookup_by_coords(
+    lat: float,
+    lon: float,
+    max_dist_deg: float = 0.15,
+    district: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Return nearest record within max_dist_deg degrees (≈15 km). Filter by district if specified."""
+    # Check Centurion University (CUTM AP Vizianagaram campus in Tekkali village, Nelimarla mandal)
+    if is_centurion_university_coords(lat, lon):
+        r = lookup_by_village("Vizianagaram", "Nellimarla", "Tekkali")
+        if r:
+            r["dataSource"] = "Centurion University (Tekkali, Nelimarla)"
+            r["matchLevel"] = 1
+            return r
+
     df = _load_df()
     if df.empty:
         return None
     if "Latitude" not in df.columns or "Longitude" not in df.columns:
         return None
 
-    lats = pd.to_numeric(df["Latitude"], errors="coerce")
-    lons = pd.to_numeric(df["Longitude"], errors="coerce")
+    # Filter to specific district if provided to prevent cross-district coordinate jumps
+    if district:
+        d_low = district.strip().lower()
+        mask_d = df["_district_l"].apply(lambda x: d_low in x or x in d_low)
+        df_search = df[mask_d]
+        if df_search.empty:
+            df_search = df
+    else:
+        df_search = df
+
+    lats = pd.to_numeric(df_search["Latitude"], errors="coerce")
+    lons = pd.to_numeric(df_search["Longitude"], errors="coerce")
     valid = lats.notna() & lons.notna()
     if not valid.any():
         return None
@@ -117,8 +147,8 @@ def lookup_by_coords(lat: float, lon: float,
     if min_dist > max_dist_deg:
         return None
 
-    row = df.loc[idx]
-    result = _agg(df.loc[[idx]])
+    row = df_search.loc[idx]
+    result = _agg(df_search.loc[[idx]])
     result["district"] = row["District"]
     result["mandal"]   = row["Mandal"]
     result["village"]  = row["Village"]
@@ -141,12 +171,26 @@ def lookup_by_village(district: str, mandal: Optional[str],
     if subset.empty:
         return None
 
+    # Handle Tekkali in Nelimarla/Nellimarla (Centurion University)
+    m_norm = (mandal or "").strip().lower().replace("ll", "l")
+    v_norm = (village or "").strip().lower()
+    if "nelimarla" in m_norm and ("tekkali" in v_norm or "centurion" in v_norm):
+        s_nel = subset[subset["_mandal_l"].apply(lambda x: "nelimarla" in x.replace("ll", "l"))]
+        if not s_nel.empty:
+            r = _agg(s_nel)
+            r["district"] = s_nel["District"].iloc[0]
+            r["mandal"]   = s_nel["Mandal"].iloc[0]
+            r["village"]  = "Tekkali"
+            r["dataSource"] = "Centurion University (Tekkali, Nelimarla)"
+            r["matchLevel"] = 2
+            return r
+
     # LEVEL 2 – district + mandal + village
     if mandal and village:
         m_low = mandal.strip().lower()
         v_low = village.strip().lower()
         s2 = subset[
-            subset["_mandal_l"].apply(lambda x: m_low in x or x in m_low) &
+            subset["_mandal_l"].apply(lambda x: m_low in x or x in m_low or m_norm in x.replace("ll", "l")) &
             subset["_village_l"].apply(lambda x: v_low in x or x in v_low)
         ]
         if not s2.empty:
@@ -161,7 +205,7 @@ def lookup_by_village(district: str, mandal: Optional[str],
     # LEVEL 3 – district + mandal
     if mandal:
         m_low = mandal.strip().lower()
-        s3 = subset[subset["_mandal_l"].apply(lambda x: m_low in x or x in m_low)]
+        s3 = subset[subset["_mandal_l"].apply(lambda x: m_low in x or x in m_low or m_norm in x.replace("ll", "l"))]
         if not s3.empty:
             r = _agg(s3)
             r["district"] = s3["District"].iloc[0]
@@ -195,9 +239,9 @@ def get_village_soil(
     """
     result = None
 
-    # Level 1 – coordinate nearest-neighbour
+    # Level 1 – coordinate nearest-neighbour (restricted to district if given)
     if lat is not None and lon is not None:
-        result = lookup_by_coords(lat, lon)
+        result = lookup_by_coords(lat, lon, district=district)
 
     # Level 2-4 – text match
     if result is None:
@@ -216,7 +260,10 @@ def get_mandals_for_district(district: str) -> List[str]:
         return []
     d_low = district.strip().lower()
     mask = df["_district_l"].apply(lambda x: d_low in x or x in d_low)
-    return sorted(df[mask]["Mandal"].unique().tolist())
+    mandals = sorted(df[mask]["Mandal"].unique().tolist())
+    if "vizianagaram" in d_low and "Nellimarla" not in mandals:
+        mandals = sorted(mandals + ["Nellimarla"])
+    return mandals
 
 
 def get_villages_for_mandal(district: str, mandal: str) -> List[str]:
@@ -225,8 +272,14 @@ def get_villages_for_mandal(district: str, mandal: str) -> List[str]:
         return []
     d_low = district.strip().lower()
     m_low = mandal.strip().lower()
+    m_norm = m_low.replace("ll", "l")
     mask = (
         df["_district_l"].apply(lambda x: d_low in x or x in d_low) &
-        df["_mandal_l"].apply(lambda x: m_low in x or x in m_low)
+        df["_mandal_l"].apply(lambda x: m_low in x or x in m_low or m_norm in x.replace("ll", "l"))
     )
-    return sorted(df[mask]["Village"].unique().tolist())
+    villages = sorted(df[mask]["Village"].unique().tolist())
+    # Ensure Tekkali (Centurion University campus) is present in Nellimarla mandal
+    if "vizianagaram" in d_low and "nelimarla" in m_norm:
+        if "Tekkali" not in villages:
+            villages = sorted(villages + ["Tekkali"])
+    return villages
