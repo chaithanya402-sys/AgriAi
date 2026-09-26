@@ -9,6 +9,12 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { cn } from '@/lib/utils'
+import { AgricultureBackground } from '@/components/landing/AgricultureBackground'
+
+// 20 agriculture images in /public/agri-bg/ — cinematic sequence
+const AGRI_IMAGES = Array.from({ length: 20 }, (_, i) =>
+  `/agri-bg/bg-${String(i + 1).padStart(2, '0')}.webp`
+)
 
 // ---------------------------------------------------------------------------
 // Data
@@ -232,13 +238,22 @@ export function LandingPage() {
   return (
     <div>
       {/* ---------- HERO ---------- */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-deep-900 via-deep-800 to-fresh-500 text-white">
-        <div className="pointer-events-none absolute inset-0 opacity-20" aria-hidden>
+      <section className="relative overflow-hidden bg-deep-900 text-white">
+        {/* ── Animated agriculture background (behind all content) ── */}
+        <AgricultureBackground
+          images={AGRI_IMAGES}
+          displayDuration={6}
+          transitionDuration={2}
+          overlayOpacity={0.48}
+        />
+
+        {/* Original decorative blobs — kept exactly as before, on top of bg ── */}
+        <div className="pointer-events-none absolute inset-0 opacity-20" aria-hidden style={{ zIndex: 4 }}>
           <div className="absolute -left-20 top-10 h-72 w-72 rounded-full bg-fresh-300 blur-3xl" />
           <div className="absolute right-0 top-1/3 h-80 w-80 rounded-full bg-earth-300 blur-3xl" />
         </div>
 
-        <div className="container relative grid items-center gap-12 py-20 lg:grid-cols-2 lg:py-28">
+        <div className="container relative grid items-center gap-12 py-20 lg:grid-cols-2 lg:py-28" style={{ zIndex: 5 }}>
           {/* Copy */}
           <div>
             <Badge className="bg-white/10 text-white ring-1 ring-white/20">
