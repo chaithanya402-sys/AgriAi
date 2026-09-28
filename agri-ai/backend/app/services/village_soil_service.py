@@ -96,12 +96,53 @@ def _agg(subset: pd.DataFrame) -> Dict[str, Any]:
 
 # ── public lookup functions ───────────────────────────────────────────────────
 
+# Known village/mandal coordinates for accurate reverse geocoding
+KNOWN_VILLAGE_COORDS = {
+    # Nellore District
+    "pedda abbipuram": {"lat": 14.3894, "lon": 79.8932, "mandal": "Atmakur", "district": "Nellore", "state": "Andhra Pradesh"},
+    "atmakur": {"lat": 14.3850, "lon": 79.9050, "mandal": "Atmakur", "district": "Nellore", "state": "Andhra Pradesh"},
+    "nellore": {"lat": 14.4426, "lon": 79.9865, "mandal": "Nellore", "district": "Nellore", "state": "Andhra Pradesh"},
+    "gudur": {"lat": 14.2833, "lon": 79.8167, "mandal": "Gudur", "district": "Nellore", "state": "Andhra Pradesh"},
+    "chintapalli": {"lat": 14.5333, "lon": 79.8500, "mandal": "Chintapalli", "district": "Nellore", "state": "Andhra Pradesh"},
+    "kaviti": {"lat": 14.6500, "lon": 79.9333, "mandal": "Kaviti", "district": "Nellore", "state": "Andhra Pradesh"},
+    "rapur": {"lat": 14.3667, "lon": 79.7500, "mandal": "Rapur", "district": "Nellore", "state": "Andhra Pradesh"},
+}
+
 def is_centurion_university_coords(lat: float, lon: float) -> bool:
     """Detect if coordinates are in or around Centurion University (CUTM AP), Tekkali village, Nelimarla mandal, Vizianagaram."""
     return (
         (18.170 <= lat <= 18.215 and 83.370 <= lon <= 83.415)
         or (17.875 <= lat <= 17.915 and 83.285 <= lon <= 83.320)
     )
+
+
+def _find_nearest_known_village(lat: float, lon: float, max_dist_deg: float = 0.15) -> Optional[Dict[str, Any]]:
+    """Find nearest known village from hardcoded KNOWN_VILLAGE_COORDS."""
+    best_dist = float("inf")
+    best_village = None
+    
+    for village_name, village_data in KNOWN_VILLAGE_COORDS.items():
+        v_lat = village_data["lat"]
+        v_lon = village_data["lon"]
+        dist = math.sqrt((lat - v_lat) ** 2 + (lon - v_lon) ** 2)
+        
+        if dist < best_dist and dist <= max_dist_deg:
+            best_dist = dist
+            best_village = village_name
+    
+    if best_village:
+        data = KNOWN_VILLAGE_COORDS[best_village]
+        return {
+            "district": data["district"],
+            "mandal": data["mandal"],
+            "village": best_village.title(),
+            "dataSource": "Known village coordinates (high-precision)",
+            "matchLevel": 0,
+            "lat": data["lat"],
+            "lon": data["lon"],
+            "state": data["state"],
+        }
+    return None
 
 
 def lookup_by_coords(
@@ -118,6 +159,11 @@ def lookup_by_coords(
             r["dataSource"] = "Centurion University (Tekkali, Nelimarla)"
             r["matchLevel"] = 1
             return r
+
+    # LEVEL 0.5 – Check known villages with hardcoded coordinates (most accurate)
+    known_result = _find_nearest_known_village(lat, lon, max_dist_deg)
+    if known_result:
+        return known_result
 
     df = _load_df()
     if df.empty:

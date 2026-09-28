@@ -186,3 +186,32 @@ html.dark [role="option"][data-highlighted] {
     @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
 }
+
+/* Documentation-style subtle scrollbar */
+.custom-doc-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #e5e7eb transparent;
+}
+.custom-doc-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-doc-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-doc-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+}
+.custom-doc-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #d1d5db;
+}
+
+html.dark .custom-doc-scrollbar {
+  scrollbar-color: #1c3527 transparent;
+}
+html.dark .custom-doc-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #1c3527;
+}
+html.dark .custom-doc-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #274836;
+}

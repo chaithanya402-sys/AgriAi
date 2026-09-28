@@ -18,6 +18,15 @@ interface DistrictCoord {
   zoom: number
 }
 
+// Known mandal and village coordinates for precise location detection
+const MANDAL_COORDS: Record<string, DistrictCoord> = {
+  atmakur: { name: 'Atmakur', lat: 14.3850, lon: 79.9050, zoom: 14 },
+  gudur: { name: 'Gudur', lat: 14.2833, lon: 79.8167, zoom: 14 },
+  chintapalli: { name: 'Chintapalli', lat: 14.5333, lon: 79.8500, zoom: 14 },
+  kaviti: { name: 'Kaviti', lat: 14.6500, lon: 79.9333, zoom: 14 },
+  rapur: { name: 'Rapur', lat: 14.3667, lon: 79.7500, zoom: 14 },
+}
+
 const DISTRICT_COORDS: Record<string, DistrictCoord> = {
   vizianagaram: { name: 'Vizianagaram', lat: 18.1124, lon: 83.3956, zoom: 12 },
   srikakulam: { name: 'Srikakulam', lat: 18.2970, lon: 83.8968, zoom: 12 },
@@ -105,6 +114,27 @@ function resolveMapLocation({
       <div style="color: #16a34a; font-weight: 500; font-size: 11px; margin-top: 2px;">Andhra Pradesh</div>
     </div>
   `.replace(/\s+/g, ' ').trim()
+
+  // 0. Check if mandal/village match known coordinates (most precise)
+  if (mandal) {
+    const mandalMatch = Object.entries(MANDAL_COORDS).find(
+      ([key]) => key === mNorm || mNorm.includes(key) || key.includes(mNorm)
+    )
+    if (mandalMatch) {
+      const mandalData = mandalMatch[1]
+      return {
+        name: displayVillage
+          ? `${displayVillage}, ${displayMandal || mandalData.name}`
+          : `${displayMandal || mandalData.name}, ${displayDistrict}`,
+        lat: latitude ?? mandalData.lat,
+        lon: longitude ?? mandalData.lon,
+        zoom: 14,
+        radius: displayVillage ? 350 : 1500,
+        popupHtml,
+        subtitle: [displayVillage, displayMandal, displayDistrict].filter(Boolean).join(', '),
+      }
+    }
+  }
 
   // 1. Explicit valid coordinates provided (from farm model or live GPS)
   if (

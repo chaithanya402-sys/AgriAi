@@ -34,6 +34,7 @@ def resolve_location_endpoint(
         result["location"] = "Tekkali, Nellimarla, Vizianagaram, Andhra Pradesh"
         return result
 
+    # Try village/mandal lookup with village soil dataset
     if resolved_district and resolved_lat and resolved_lon and vss.is_available():
         vr = vss.lookup_by_coords(resolved_lat, resolved_lon, district=resolved_district)
         if vr:
@@ -42,6 +43,25 @@ def resolve_location_endpoint(
             if not resolved_district or vr_dist == resolved_district.strip().lower() or vr_dist in resolved_district.lower():
                 result["mandal"] = vr.get("mandal")
                 result["village"] = vr.get("village")
+                result["dataSource"] = vr.get("dataSource", "Village-level soil data")
+                result["location"] = ", ".join([
+                    vr.get("village"),
+                    vr.get("mandal"),
+                    resolved_district,
+                    "Andhra Pradesh"
+                ]).replace("None, ", "").replace(", None", "")
+
+    # If still no mandal/village but we have coordinates and Nellore district, try known villages
+    if (
+        resolved_district and resolved_district.lower().strip() == "nellore"
+        and resolved_lat and resolved_lon
+        and not result.get("mandal")
+    ):
+        known_vr = vss._find_nearest_known_village(resolved_lat, resolved_lon)
+        if known_vr:
+            result["mandal"] = known_vr.get("mandal")
+            result["village"] = known_vr.get("village")
+            result["dataSource"] = known_vr.get("dataSource", "Known village coordinates")
 
     return result
 
