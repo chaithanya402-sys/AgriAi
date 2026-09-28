@@ -210,7 +210,7 @@ def analyze_soil(
         "potassium":      data.potassium,
         "ph":             data.ph,
         "organic_carbon": data.organic_carbon,
-        "moisture":       data.moisture,
+        "moisture":       data.moisture if data.moisture is not None else 50.0,
     }
 
     result = service.analyze(features)

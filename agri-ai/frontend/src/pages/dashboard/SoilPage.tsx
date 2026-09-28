@@ -166,6 +166,12 @@ export function SoilPage() {
         ? 0
         : Number(form.organic_carbon)
 
+    // Moisture is optional — default to 50 if blank (not in AP village dataset)
+    const moistureValue = form.moisture ? Number(form.moisture) : 50
+
+    // Clear previous analysis so the new result always shows
+    setActiveAnalysis(null)
+
     const res = await run(() =>
       soilApi.analyze({
         farm_id: activeFarm?.id,
@@ -174,7 +180,7 @@ export function SoilPage() {
         potassium: Number(form.potassium),
         ph: Number(form.ph),
         organic_carbon: ocValue,
-        moisture: Number(form.moisture),
+        moisture: moistureValue,
       })
     )
     if (res) {
@@ -198,7 +204,8 @@ export function SoilPage() {
     )
   }
 
-  const displayResult = activeAnalysis || analyzeResult
+  // analyzeResult (from manual button click) always wins over auto-loaded analysis
+  const displayResult = analyzeResult || activeAnalysis
 
   return (
     <div className="space-y-6">
@@ -323,15 +330,14 @@ export function SoilPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Moisture (%)</Label>
+                <Label>Moisture (%) <span className="text-neutral-400 text-xs">(optional)</span></Label>
                 <Input
                   type="number"
                   step="0.1"
-                  placeholder="e.g. 35"
+                  placeholder="e.g. 35 (leave blank to use default)"
                   value={form.moisture}
                   onChange={(e) => handleChange('moisture', e.target.value)}
                   disabled={soilLoading}
-                  required
                 />
               </div>
             </div>

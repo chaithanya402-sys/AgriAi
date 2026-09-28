@@ -10,7 +10,7 @@ class SoilAnalysisRequest(BaseModel):
     potassium: float
     ph: float
     organic_carbon: Optional[float] = 0.0
-    moisture: float
+    moisture: Optional[float] = 50.0
     texture: Optional[str] = None
 
 
