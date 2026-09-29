@@ -3,6 +3,7 @@ __pycache__/
 *.db
 .env
 .venv/
+.venv*/
 venv/
 models/*.pkl
 models/*.keras

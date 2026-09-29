@@ -18,6 +18,15 @@ interface DistrictCoord {
   zoom?: number
 }
 
+// Known mandal and village coordinates for precise location detection
+const MANDAL_COORDS: Record<string, DistrictCoord> = {
+  atmakur: { name: 'Atmakur', lat: 14.3850, lon: 79.9050, zoom: 14 },
+  gudur: { name: 'Gudur', lat: 14.2833, lon: 79.8167, zoom: 14 },
+  chintapalli: { name: 'Chintapalli', lat: 14.5333, lon: 79.8500, zoom: 14 },
+  kaviti: { name: 'Kaviti', lat: 14.6500, lon: 79.9333, zoom: 14 },
+  rapur: { name: 'Rapur', lat: 14.3667, lon: 79.7500, zoom: 14 },
+}
+
 const DISTRICT_COORDS: Record<string, DistrictCoord> = {
   vizianagaram: { name: 'Vizianagaram', lat: 18.1124, lon: 83.3956, zoom: 12 },
   srikakulam: { name: 'Srikakulam', lat: 18.2970, lon: 83.8968, zoom: 12 },
@@ -69,6 +78,26 @@ function resolveCoordinates(
   const norm = normalizeKey(district)
   const vNorm = (villageProp || '').toLowerCase().trim()
   const mNorm = (mandalProp || '').toLowerCase().trim().replace('ll', 'l')
+
+  // Check if mandal matches known coordinates (most precise)
+  if (mandalProp) {
+    const mandalMatch = Object.entries(MANDAL_COORDS).find(
+      ([key]) => key === mNorm || mNorm.includes(key) || key.includes(mNorm)
+    )
+    if (mandalMatch) {
+      const mandalData = mandalMatch[1]
+      const finalLat = latProp && Math.abs(latProp - mandalData.lat) < 0.5 ? latProp : mandalData.lat
+      const finalLon = lonProp && Math.abs(lonProp - mandalData.lon) < 0.5 ? lonProp : mandalData.lon
+      return {
+        name: villageProp
+          ? `${villageProp}, ${mandalProp}`
+          : `${mandalProp}, ${district || 'Nellore'}`,
+        lat: finalLat,
+        lon: finalLon,
+        zoom: villageProp ? 15 : 14,
+      }
+    }
+  }
 
   // Explicit coordinates
   if (latProp && lonProp && latProp > 12 && latProp < 21 && lonProp > 76 && lonProp < 86) {
