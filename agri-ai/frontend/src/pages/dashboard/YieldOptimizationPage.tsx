@@ -253,21 +253,6 @@ export function YieldOptimizationPage({ onBack }: YieldOptimizationPageProps) {
   return (
     <div className="relative space-y-6 pb-20">
       {/* ============================================================== */}
-      {/* SUBTLE PANORAMIC AGRICULTURAL BACKGROUND BANNER AT TOP         */}
-      {/* ============================================================== */}
-      <div className="pointer-events-none absolute -top-8 -left-8 -right-8 h-56 overflow-hidden opacity-30 select-none -z-10">
-        <img
-          src="/agri-bg/bg-01.webp"
-          alt=""
-          className="h-full w-full object-cover object-top"
-          onError={(e) => {
-            ;(e.target as HTMLImageElement).src = '/hero-farmer.jpg'
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#F8FBF6]/60 to-[#F8FBF6]" />
-      </div>
-
-      {/* ============================================================== */}
       {/* 1. TOP HEADER & BREADCRUMB                                     */}
       {/* ============================================================== */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

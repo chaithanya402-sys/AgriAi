@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
-import { Alert } from '@/components/ui/Alert'
 import { EmptyState } from '@/components/ui/EmptyState'
 import {
   Select,
@@ -26,11 +25,6 @@ import { FarmPlanModal } from '@/components/crop/FarmPlanModal'
 import { getCropDetails } from '@/data/cropDetailsData'
 import { YieldOptimizationPage } from './YieldOptimizationPage'
 import {
-  TrendingUp,
-  AlertTriangle,
-  BarChart3,
-  Target,
-  Wheat,
   ArrowLeft,
   Calendar,
   Home,
@@ -41,11 +35,13 @@ import {
   Droplets,
   CloudSun,
   FlaskConical,
-  Compass,
   ArrowRight,
   Info,
   Sparkles,
   Link as LinkIcon,
+  BarChart3,
+  Target,
+  Wheat,
 } from 'lucide-react'
 
 const CROPS = [...CROPS_LIST]
@@ -209,22 +205,7 @@ export function YieldPage() {
     : DEFAULT_FEATURE_IMPORTANCE
 
   return (
-    <div className="relative space-y-6 pb-20">
-      {/* ============================================================== */}
-      {/* SUBTLE PANORAMIC AGRICULTURAL BACKGROUND BANNER AT TOP         */}
-      {/* ============================================================== */}
-      <div className="pointer-events-none absolute -top-8 -left-8 -right-8 h-56 overflow-hidden opacity-30 select-none -z-10">
-        <img
-          src="/agri-bg/bg-01.webp"
-          alt=""
-          className="h-full w-full object-cover object-top"
-          onError={(e) => {
-            ;(e.target as HTMLImageElement).src = '/hero-farmer.jpg'
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#F8FBF6]/60 to-[#F8FBF6]" />
-      </div>
-
+    <div className="space-y-6 pb-16">
       {/* ============================================================== */}
       {/* 1. TOP HEADER & BREADCRUMB                                     */}
       {/* ============================================================== */}
@@ -354,10 +335,10 @@ export function YieldPage() {
       </div>
 
       {/* ============================================================== */}
-      {/* 3. MIDDLE ROW: 3 CARDS (Form, Predicted Yield, Feature Importance) */}
+      {/* 3. MIDDLE ROW: 3 BALANCED CARDS (Form: 5, Yield: 3, Influence: 4) */}
       {/* ============================================================== */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 items-stretch">
-        {/* Card 1: Prediction Parameters Form (5 Cols) */}
+        {/* Card 1: Prediction Parameters Form (5 Columns out of 12) */}
         <Card className="rounded-2xl border border-neutral-200/90 bg-white shadow-xs lg:col-span-5 flex flex-col justify-between">
           <CardHeader className="pb-3 pt-5">
             <div className="flex items-center gap-3">
@@ -377,6 +358,7 @@ export function YieldPage() {
 
           <CardContent className="space-y-3 pt-1">
             <form onSubmit={handleSubmit} className="space-y-3">
+              {/* Row 1: Crop, Farm, Area */}
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-neutral-600">Crop</Label>
@@ -384,7 +366,7 @@ export function YieldPage() {
                     value={form.crop}
                     onValueChange={(v) => handleChange('crop', v)}
                   >
-                    <SelectTrigger className="h-8 text-xs font-bold">
+                    <SelectTrigger className="h-8.5 text-xs font-bold bg-neutral-50/60 border-neutral-200">
                       <SelectValue placeholder="Crop" />
                     </SelectTrigger>
                     <SelectContent>
@@ -406,7 +388,7 @@ export function YieldPage() {
                       handleChange('farm_id', v)
                     }}
                   >
-                    <SelectTrigger className="h-8 text-xs font-bold">
+                    <SelectTrigger className="h-8.5 text-xs font-bold bg-neutral-50/60 border-neutral-200">
                       <SelectValue placeholder="Farm" />
                     </SelectTrigger>
                     <SelectContent>
@@ -422,7 +404,7 @@ export function YieldPage() {
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-neutral-600">Area (ha)</Label>
                   <Input
-                    className="h-8 text-xs font-bold"
+                    className="h-8.5 text-xs font-bold bg-neutral-50/60 border-neutral-200"
                     type="number"
                     step="0.1"
                     value={form.area}
@@ -432,11 +414,12 @@ export function YieldPage() {
                 </div>
               </div>
 
+              {/* Row 2: N, P, K */}
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-neutral-600">N (mg/kg)</Label>
                   <Input
-                    className="h-8 text-xs font-semibold"
+                    className="h-8.5 text-xs font-semibold bg-neutral-50/60 border-neutral-200"
                     type="number"
                     step="0.1"
                     value={form.nitrogen}
@@ -447,7 +430,7 @@ export function YieldPage() {
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-neutral-600">P (mg/kg)</Label>
                   <Input
-                    className="h-8 text-xs font-semibold"
+                    className="h-8.5 text-xs font-semibold bg-neutral-50/60 border-neutral-200"
                     type="number"
                     step="0.1"
                     value={form.phosphorus}
@@ -458,7 +441,7 @@ export function YieldPage() {
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-neutral-600">K (mg/kg)</Label>
                   <Input
-                    className="h-8 text-xs font-semibold"
+                    className="h-8.5 text-xs font-semibold bg-neutral-50/60 border-neutral-200"
                     type="number"
                     step="0.1"
                     value={form.potassium}
@@ -468,11 +451,12 @@ export function YieldPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              {/* Row 3: Temp, Humidity, pH */}
+              <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-neutral-600">Temp (°C)</Label>
                   <Input
-                    className="h-8 text-xs font-semibold"
+                    className="h-8.5 text-xs font-semibold bg-neutral-50/60 border-neutral-200"
                     type="number"
                     step="0.1"
                     value={form.temperature}
@@ -483,7 +467,7 @@ export function YieldPage() {
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-neutral-600">Humidity (%)</Label>
                   <Input
-                    className="h-8 text-xs font-semibold"
+                    className="h-8.5 text-xs font-semibold bg-neutral-50/60 border-neutral-200"
                     type="number"
                     step="0.1"
                     value={form.humidity}
@@ -491,13 +475,10 @@ export function YieldPage() {
                     required
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-neutral-600">pH</Label>
                   <Input
-                    className="h-8 text-xs font-semibold"
+                    className="h-8.5 text-xs font-semibold bg-neutral-50/60 border-neutral-200"
                     type="number"
                     step="0.01"
                     value={form.ph}
@@ -505,10 +486,14 @@ export function YieldPage() {
                     required
                   />
                 </div>
+              </div>
+
+              {/* Row 4: Rainfall and Predict Yield Button */}
+              <div className="grid grid-cols-3 gap-2 text-xs items-end pt-1">
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-neutral-600">Rainfall (mm)</Label>
                   <Input
-                    className="h-8 text-xs font-semibold"
+                    className="h-8.5 text-xs font-semibold bg-neutral-50/60 border-neutral-200"
                     type="number"
                     step="0.1"
                     value={form.rainfall}
@@ -516,24 +501,24 @@ export function YieldPage() {
                     required
                   />
                 </div>
-              </div>
 
-              <div className="flex justify-end pt-1">
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="rounded-xl bg-[#123B22] text-xs font-bold text-white hover:bg-[#0E2F1B] px-4 shadow-2xs"
-                >
-                  <Sprout className="h-3.5 w-3.5 mr-1.5" />
-                  {loading ? <ButtonLoader label="Predicting..." /> : 'Predict Yield'}
-                </Button>
+                <div className="col-span-2 flex justify-end">
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="h-8.5 w-full rounded-xl bg-[#123B22] text-xs font-bold text-white hover:bg-[#0E2F1B] px-4 shadow-2xs flex items-center justify-center gap-1.5"
+                  >
+                    <Sprout className="h-3.5 w-3.5" />
+                    <span>{loading ? <ButtonLoader label="Predicting..." /> : 'Predict Yield'}</span>
+                  </Button>
+                </div>
               </div>
             </form>
           </CardContent>
         </Card>
 
-        {/* Card 2: Predicted Yield (3.5 Cols) */}
-        <Card className="relative overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-xs lg:col-span-3.5 flex flex-col justify-between">
+        {/* Card 2: Predicted Yield (3 Columns out of 12) */}
+        <Card className="relative overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-xs lg:col-span-3 flex flex-col justify-between">
           <CardHeader className="pb-2 pt-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -551,7 +536,7 @@ export function YieldPage() {
           <CardContent className="space-y-4 pt-1 z-10">
             <div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-4xl sm:text-5xl font-black text-[#17231A] tracking-tight">
+                <span className="text-4xl font-black text-[#17231A] tracking-tight">
                   {predictedYieldValue}
                 </span>
                 <span className="text-sm font-bold text-neutral-500">tonnes/ha</span>
@@ -565,7 +550,7 @@ export function YieldPage() {
             </div>
 
             {/* Circular Confidence Badge */}
-            <div className="flex items-center gap-3 rounded-2xl bg-white/90 backdrop-blur-xs border border-neutral-200/80 p-3 shadow-2xs">
+            <div className="flex items-center gap-3 rounded-2xl bg-white/95 backdrop-blur-xs border border-neutral-200/80 p-3 shadow-2xs">
               <div className="relative flex items-center justify-center w-12 h-12 shrink-0">
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                   <circle
@@ -596,14 +581,14 @@ export function YieldPage() {
               <div>
                 <span className="text-xs font-extrabold text-[#17231A]">Confidence</span>
                 <p className="text-[10px] text-neutral-500 font-medium leading-tight">
-                  High confidence prediction based on historical yield patterns.
+                  High confidence prediction
                 </p>
               </div>
             </div>
           </CardContent>
 
-          {/* Panoramic crop landscape at bottom */}
-          <div className="relative h-24 w-full overflow-hidden mt-2 pointer-events-none">
+          {/* Panoramic crop landscape illustration at bottom */}
+          <div className="relative h-20 w-full overflow-hidden mt-1 pointer-events-none">
             <img
               src="/agri-bg/bg-01.webp"
               alt=""
@@ -612,12 +597,12 @@ export function YieldPage() {
                 ;(e.target as HTMLImageElement).src = '/hero-farmer.jpg'
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-white" />
+            <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/10 to-white" />
           </div>
         </Card>
 
-        {/* Card 3: What Influenced Your Prediction? (3.5 Cols) */}
-        <Card className="rounded-2xl border border-neutral-200/90 bg-white shadow-xs lg:col-span-3.5 flex flex-col justify-between">
+        {/* Card 3: What Influenced Your Prediction? (4 Columns out of 12) */}
+        <Card className="rounded-2xl border border-neutral-200/90 bg-white shadow-xs lg:col-span-4 flex flex-col justify-between">
           <CardHeader className="pb-3 pt-5">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
@@ -635,21 +620,21 @@ export function YieldPage() {
           </CardHeader>
 
           <CardContent className="space-y-2 pt-1 pb-4">
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {featureList.map((item, idx) => {
                 const widthPercent = Math.min(100, Math.round(item.importance * 260))
                 return (
-                  <div key={idx} className="flex items-center justify-between gap-3 text-xs">
-                    <span className="text-[11px] font-semibold text-neutral-700 truncate w-32 shrink-0">
+                  <div key={idx} className="flex items-center justify-between gap-2.5 text-xs">
+                    <span className="text-[11px] font-semibold text-neutral-700 truncate w-36 shrink-0">
                       {item.label}
                     </span>
-                    <div className="relative h-2 flex-1 rounded-full bg-neutral-100 overflow-hidden">
+                    <div className="relative h-2.5 flex-1 rounded-full bg-neutral-100 overflow-hidden">
                       <div
-                        className="h-full bg-emerald-700 rounded-full"
+                        className="h-full bg-[#2E7D32] rounded-full transition-all duration-500"
                         style={{ width: `${widthPercent}%` }}
                       />
                     </div>
-                    <span className="text-[11px] font-bold text-neutral-700 w-8 text-right">
+                    <span className="text-[11px] font-bold text-neutral-800 w-9 text-right shrink-0">
                       {item.importance.toFixed(2)}
                     </span>
                   </div>
@@ -816,7 +801,7 @@ export function YieldPage() {
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-4 pt-1">
+          <CardContent className="space-y-4 pt-1 pb-5">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="space-y-1 flex-1">
                 <h4 className="text-sm font-bold text-[#17231A]">
@@ -828,7 +813,7 @@ export function YieldPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-start gap-2.5">
                 <Target className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" />
                 <div>
@@ -870,8 +855,8 @@ export function YieldPage() {
             </div>
           </CardHeader>
 
-          <CardContent className="pt-1 pb-4">
-            <div className="grid grid-cols-2 gap-2">
+          <CardContent className="pt-1 pb-5">
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={() => setSearchParams({ view: 'optimize' })}
