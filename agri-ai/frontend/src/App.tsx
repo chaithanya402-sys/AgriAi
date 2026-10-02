@@ -15,6 +15,7 @@ import { FarmManagementPage } from '@/pages/dashboard/FarmManagementPage'
 import { SoilPage } from '@/pages/dashboard/SoilPage'
 import { CropPage } from '@/pages/dashboard/CropPage'
 import { YieldPage } from '@/pages/dashboard/YieldPage'
+import { YieldOptimizationPage } from '@/pages/dashboard/YieldOptimizationPage'
 import { IrrigationPage } from '@/pages/dashboard/IrrigationPage'
 import { WeatherPage } from '@/pages/dashboard/WeatherPage'
 import { DiseasePage } from '@/pages/dashboard/DiseasePage'
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="soil" element={<SoilPage />} />
         <Route path="crop" element={<CropPage />} />
         <Route path="yield" element={<YieldPage />} />
+        <Route path="yield/optimize" element={<YieldOptimizationPage />} />
         <Route path="irrigation" element={<IrrigationPage />} />
         <Route path="weather" element={<WeatherPage />} />
         <Route path="disease" element={<DiseasePage />} />
