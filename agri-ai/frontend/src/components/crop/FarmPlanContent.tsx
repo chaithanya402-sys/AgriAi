@@ -19,6 +19,7 @@ import {
   AlertCircle,
   Sprout,
   ArrowLeft,
+  ArrowRight,
   ChevronRight,
   ShieldCheck,
   Info,
@@ -727,6 +728,32 @@ export function FarmPlanContent({
                     })}
                   </div>
                 </div>
+
+                {/* Dedicated Fertilizer Management Plan Link for Step 5 */}
+                {activeStep.id === 5 && (
+                  <div className="rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-[#EAF6EA] to-emerald-50/60 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-8 w-8 rounded-lg bg-[#123B22] text-white flex items-center justify-center shrink-0">
+                        <Wheat className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-[#17231A]">
+                          Custom Fertilizer Management Plan
+                        </p>
+                        <p className="text-[11px] text-neutral-600">
+                          Detailed NPK requirements, recommended fertilizers, application schedule, and tracking for {cropDetails.displayName}.
+                        </p>
+                      </div>
+                    </div>
+                    <a
+                      href={`/dashboard/fertilizer?crop=${encodeURIComponent(cropDetails.name)}`}
+                      className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-[#123B22] px-3.5 py-2 text-xs font-extrabold text-white hover:bg-[#0E2F1B] transition-colors shadow-2xs"
+                    >
+                      <span>Open Fertilizer Plan</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </a>
+                  </div>
+                )}
 
                 {/* Step toggle footer */}
                 <div className="flex items-center justify-between pt-2 border-t border-[#DCE8DE]">
