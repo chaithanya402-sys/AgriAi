@@ -42,39 +42,44 @@ import {
 export function FertilizerPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { farms, selectedFarmId, currentFarm } = useFarm()
+  const { farms, selectedFarmId, currentFarm, activeCrop } = useFarm()
 
   const activeFarm = farms.find((f) => f.id === selectedFarmId) || currentFarm || null
 
-  // 1. Resolve selected crop from URL param -> localStorage -> default ('Ragi' / Finger Millet)
+  // 1. Resolve selected crop from URL param -> activeCrop -> localStorage -> default ('Ragi')
   const initialCrop = useMemo(() => {
     const urlCrop = searchParams.get('crop')
     if (urlCrop) return urlCrop
+    if (activeCrop?.rawCropName) return activeCrop.rawCropName
     const saved = localStorage.getItem('agriai_selected_crop')
     if (saved) return saved
     return 'Ragi'
-  }, [searchParams])
+  }, [searchParams, activeCrop?.rawCropName])
 
   const [selectedCrop, setSelectedCrop] = useState<string>(initialCrop)
 
   useEffect(() => {
     const param = searchParams.get('crop')
-    if (param && param !== selectedCrop) {
-      setSelectedCrop(param)
+    if (param) {
+      if (param !== selectedCrop) {
+        setSelectedCrop(param)
+      }
+    } else if (activeCrop?.rawCropName && activeCrop.rawCropName !== selectedCrop) {
+      setSelectedCrop(activeCrop.rawCropName)
     }
-  }, [searchParams, selectedCrop])
+  }, [searchParams, activeCrop?.rawCropName, selectedCrop])
 
   // 2. Compute dynamic plan based on selected crop and farm soil measurements
   const cropDetails = useMemo(() => getCropDetails(selectedCrop), [selectedCrop])
 
   const soilReadings = useMemo(() => {
     return {
-      nitrogen: 60,
-      phosphorus: 40,
-      potassium: 40,
-      soilPh: 6.5,
+      nitrogen: activeCrop?.nitrogen ?? 60,
+      phosphorus: activeCrop?.phosphorus ?? 40,
+      potassium: activeCrop?.potassium ?? 40,
+      soilPh: activeCrop?.soilPH ?? 6.5,
     }
-  }, [])
+  }, [activeCrop])
 
   const plan = useMemo(
     () => getCropFertilizerPlan(selectedCrop, soilReadings),
@@ -208,9 +213,10 @@ export function FertilizerPage() {
     setIsAddRecordModalOpen(false)
   }
 
-  const farmDisplayName = activeFarm?.name || plan.farmName
-  const farmLocation = activeFarm?.district || activeFarm?.village || plan.location
-  const farmArea = activeFarm?.total_area ? `${activeFarm.total_area} ha` : plan.farmArea
+  const farmDisplayName = activeCrop?.farmName || activeFarm?.name || plan.farmName
+  const farmLocation = activeCrop?.location || activeFarm?.district || activeFarm?.village || plan.location
+  const farmArea = activeCrop?.area ? `${activeCrop.area} ha` : (activeFarm?.total_area ? `${activeFarm.total_area} ha` : plan.farmArea)
+  const currentStage = activeCrop?.cropStage || plan.cropStage
 
   return (
     <div className="relative space-y-6 pb-16">
@@ -319,7 +325,7 @@ export function FertilizerPage() {
                   <div className="flex items-center gap-1.5">
                     <Sprout className="h-3.5 w-3.5 text-emerald-700" />
                     <span>
-                      Crop Stage: <strong className="text-neutral-900 font-bold">{plan.cropStage}</strong>
+                      Crop Stage: <strong className="text-neutral-900 font-bold">{currentStage}</strong>
                     </span>
                   </div>
                 </div>
@@ -1234,7 +1240,7 @@ export function FertilizerPage() {
         cropDetails={cropDetails}
         farmName={farmDisplayName}
         locationLabel={farmLocation}
-        area={Number(activeFarm?.total_area) || 3}
+        area={activeCrop?.area || Number(activeFarm?.total_area) || 3}
         isOpen={isFarmPlanModalOpen}
         onClose={() => setIsFarmPlanModalOpen(false)}
       />

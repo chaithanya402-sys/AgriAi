@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react'
 import { farmApi } from '@/services/api'
 import { agriculturalDataService } from '@/services/agriculturalDataService'
+import { getCropDetails } from '@/data/cropDetailsData'
 import type { Farm } from '@/types'
 
 export interface ActiveFarmLocation {
@@ -13,12 +14,43 @@ export interface ActiveFarmLocation {
   village: string | null
 }
 
+export interface ActiveCrop {
+  cropId?: string
+  cropName: string
+  rawCropName: string
+  farmId: number | string
+  farmName: string
+  location: string
+  state?: string
+  district?: string
+  area: number
+  soilType?: string
+  cropStage: string
+  season?: string
+  nitrogen: number
+  phosphorus: number
+  potassium: number
+  soilPH: number
+  temperature: number
+  humidity: number
+  rainfall: number
+  recommendationScore?: number
+  expectedYield?: number
+  riskLevel?: string
+  image?: string
+  targetYield?: number
+  activatedAt?: string
+}
+
 interface FarmContextValue {
   farms: Farm[]
   selectedFarmId: number | null
   currentFarm: Farm | null
   activeLocation: ActiveFarmLocation
   activeLocationLoading: boolean
+  activeCrop: ActiveCrop | null
+  setActiveCrop: (crop: ActiveCrop | null) => void
+  activateCropPlan: (cropData: Partial<ActiveCrop> & { cropName: string }) => ActiveCrop
   setSelectedFarmId: (id: number | null) => void
   setCurrentFarm: (farm: Farm | null) => void
   refetch: () => Promise<void>
@@ -195,6 +227,104 @@ export function FarmProvider({ children }: { children: ReactNode }) {
     [setSelectedFarmId]
   )
 
+  // Active Crop State (Single Source of Truth across the application)
+  const [activeCrop, setActiveCropState] = useState<ActiveCrop | null>(() => {
+    try {
+      const saved = localStorage.getItem('agriai_active_crop')
+      if (saved) return JSON.parse(saved)
+    } catch (e) {
+      console.warn('Failed to parse active crop from localStorage:', e)
+    }
+    return null
+  })
+
+  const setActiveCrop = useCallback((crop: ActiveCrop | null) => {
+    setActiveCropState(crop)
+    if (crop) {
+      localStorage.setItem('agriai_active_crop', JSON.stringify(crop))
+      localStorage.setItem('agriai_selected_crop', crop.rawCropName)
+    } else {
+      localStorage.removeItem('agriai_active_crop')
+      localStorage.removeItem('agriai_selected_crop')
+    }
+  }, [])
+
+  const activateCropPlan = useCallback(
+    (cropData: Partial<ActiveCrop> & { cropName: string }): ActiveCrop => {
+      const raw =
+        cropData.rawCropName ||
+        (cropData.cropName.includes('/')
+          ? cropData.cropName.split('/')[0].trim()
+          : cropData.cropName)
+      const details = getCropDetails(raw)
+
+      const targetFarm =
+        farms.find((f) => String(f.id) === String(cropData.farmId)) ||
+        currentFarm
+
+      const newActiveCrop: ActiveCrop = {
+        cropId: cropData.cropId || String(Date.now()),
+        cropName: details.displayName || cropData.cropName,
+        rawCropName: raw,
+        farmId: cropData.farmId ?? targetFarm?.id ?? 1,
+        farmName: cropData.farmName || targetFarm?.name || 'Kharif Farm',
+        location:
+          cropData.location ||
+          targetFarm?.district ||
+          targetFarm?.village ||
+          'Nellore',
+        state: cropData.state || targetFarm?.state || undefined,
+        district: cropData.district || targetFarm?.district || undefined,
+        area: cropData.area ?? Number(targetFarm?.total_area) ?? 4,
+        soilType:
+          cropData.soilType ||
+          details.soilRequirements?.soilType ||
+          'Loamy / Clay',
+        cropStage: cropData.cropStage || 'Vegetative (Day 31–45)',
+        season:
+          cropData.season ||
+          details.climateRequirements?.season ||
+          'Kharif Season',
+        nitrogen: cropData.nitrogen ?? 60,
+        phosphorus: cropData.phosphorus ?? 40,
+        potassium: cropData.potassium ?? 40,
+        soilPH: cropData.soilPH ?? 6.5,
+        temperature: cropData.temperature ?? 24.5,
+        humidity: cropData.humidity ?? 66.1,
+        rainfall: cropData.rainfall ?? 1251,
+        recommendationScore:
+          cropData.recommendationScore ?? (details.matchScore || 0.88),
+        expectedYield: cropData.expectedYield ?? details.benchmarkYield ?? 4.0,
+        riskLevel: cropData.riskLevel ?? details.riskLevel ?? 'Low',
+        image: cropData.image || details.image || '/crops/ragi.jpg',
+        targetYield: cropData.targetYield ?? details.benchmarkYield ?? 4.0,
+        activatedAt: new Date().toISOString(),
+      }
+
+      setActiveCrop(newActiveCrop)
+      return newActiveCrop
+    },
+    [currentFarm, farms, setActiveCrop]
+  )
+
+  // Keep active crop's farm context aligned if currentFarm changes
+  useEffect(() => {
+    if (!currentFarm || !activeCrop) return
+    if (String(activeCrop.farmId) === String(currentFarm.id)) {
+      if (
+        activeCrop.farmName !== currentFarm.name ||
+        (currentFarm.total_area && activeCrop.area !== currentFarm.total_area)
+      ) {
+        setActiveCrop({
+          ...activeCrop,
+          farmName: currentFarm.name,
+          area: currentFarm.total_area ?? activeCrop.area,
+          location: currentFarm.district || currentFarm.village || activeCrop.location,
+        })
+      }
+    }
+  }, [currentFarm, activeCrop, setActiveCrop])
+
   return (
     <FarmContext.Provider
       value={{
@@ -203,6 +333,9 @@ export function FarmProvider({ children }: { children: ReactNode }) {
         currentFarm,
         activeLocation,
         activeLocationLoading,
+        activeCrop,
+        setActiveCrop,
+        activateCropPlan,
         setSelectedFarmId,
         setCurrentFarm,
         refetch,

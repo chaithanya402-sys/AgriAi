@@ -56,17 +56,23 @@ import { soilApi } from '@/services/modules'
 import { agriculturalDataService } from '@/services/agriculturalDataService'
 
 export function IrrigationPage() {
-  const { farms, selectedFarmId, setSelectedFarmId, currentFarm, loading: farmsLoading } = useFarm()
+  const { farms, selectedFarmId, setSelectedFarmId, currentFarm, activeCrop, loading: farmsLoading } = useFarm()
 
   const activeFarm = farms.find((f) => f.id === selectedFarmId) || currentFarm || null
 
   const [farmId, setFarmId] = useState<string>(() => (activeFarm ? String(activeFarm.id) : ''))
   const [soilMoisture, setSoilMoisture] = useState<number>(45)
-  const [crop, setCrop] = useState<string>('Wheat')
+  const [crop, setCrop] = useState<string>(() => activeCrop?.rawCropName || 'Wheat')
   const [temperature, setTemperature] = useState<string>('')
   const [forecastRainfall, setForecastRainfall] = useState<string>('')
 
   const result = useAsync<IrrigationResult>()
+
+  useEffect(() => {
+    if (activeCrop?.rawCropName && activeCrop.rawCropName !== crop) {
+      setCrop(activeCrop.rawCropName)
+    }
+  }, [activeCrop?.rawCropName])
 
   // When selected farm changes, update moisture, temperature, and re-compute recommendation
   useEffect(() => {
@@ -86,7 +92,7 @@ export function IrrigationPage() {
 
         let tempVal = ''
         let rainVal = ''
-        let activeCrop = crop
+        let targetCrop = activeCrop?.rawCropName || crop
 
         if (soil.state && soil.district) {
           try {
@@ -100,9 +106,9 @@ export function IrrigationPage() {
                 rainVal = String(Math.round(cropData.rainfall / 30))
                 setForecastRainfall(rainVal)
               }
-              if (cropData.crops && cropData.crops.length > 0) {
-                activeCrop = cropData.crops[0]
-                setCrop(activeCrop)
+              if (!activeCrop?.rawCropName && cropData.crops && cropData.crops.length > 0) {
+                targetCrop = cropData.crops[0]
+                setCrop(targetCrop)
               }
             }
           } catch {
@@ -114,7 +120,7 @@ export function IrrigationPage() {
           irrigationApi.recommend({
             farm_id: targetId,
             soil_moisture: moistureVal,
-            crop: activeCrop || 'Wheat',
+            crop: targetCrop || 'Wheat',
             temperature: tempVal ? Number(tempVal) : undefined,
             forecast_rainfall_mm: rainVal ? Number(rainVal) : undefined,
           })
@@ -123,7 +129,7 @@ export function IrrigationPage() {
       .catch((err) => {
         console.warn('Failed to fetch farm soil moisture for irrigation:', err)
       })
-  }, [activeFarm?.id])
+  }, [activeFarm?.id, activeCrop?.rawCropName])
 
   const handleSubmit = () => {
     const targetFarmId = Number(farmId) || activeFarm?.id

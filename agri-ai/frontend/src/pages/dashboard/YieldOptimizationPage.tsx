@@ -165,11 +165,26 @@ export interface YieldOptimizationPageProps {
 
 export function YieldOptimizationPage({ onBack }: YieldOptimizationPageProps) {
   const navigate = useNavigate()
-  const { currentFarm } = useFarm()
+  const { currentFarm, activeCrop } = useFarm()
 
-  // Crop context
-  const selectedCrop = 'Ragi'
+  const handleBack = () => {
+    if (onBack) {
+      onBack()
+    } else {
+      navigate('/dashboard/yield')
+    }
+  }
+
+  // Active Crop resolution
+  const selectedCrop = activeCrop?.rawCropName || 'Ragi'
   const cropDetails = useMemo(() => getCropDetails(selectedCrop), [selectedCrop])
+  const cropDisplayName = activeCrop?.cropName || cropDetails.displayName || 'Ragi / Finger Millet'
+  const cropImage = activeCrop?.image || cropDetails.image || '/crops/ragi.jpg'
+  const cropStage = activeCrop?.cropStage || 'Vegetative (Day 31–45)'
+
+  const farmName = activeCrop?.farmName || currentFarm?.name || 'Kharif Farm'
+  const farmArea = activeCrop?.area ? `${activeCrop.area} ha` : (currentFarm?.total_area ? `${currentFarm.total_area} ha` : '3 ha')
+  const farmLocation = activeCrop?.location || currentFarm?.district || currentFarm?.village || 'Nellore'
 
   // Modals
   const [isFarmPlanModalOpen, setIsFarmPlanModalOpen] = useState(false)
@@ -209,18 +224,6 @@ export function YieldOptimizationPage({ onBack }: YieldOptimizationPageProps) {
   const [newQty, setNewQty] = useState('100 kg/ha')
   const [newPlannedDate, setNewPlannedDate] = useState('Day 60')
   const [newStatus, setNewStatus] = useState<'Planned' | 'Applied' | 'Skipped'>('Planned')
-
-  const handleBack = () => {
-    if (onBack) {
-      onBack()
-    } else {
-      navigate('/dashboard/yield')
-    }
-  }
-
-  const farmName = currentFarm?.name || 'Kharif Farm'
-  const farmArea = currentFarm?.total_area ? `${currentFarm.total_area} ha` : '3 ha'
-  const farmLocation = currentFarm?.district || currentFarm?.village || 'Nellore'
 
   const handleStatusChange = (id: string, newStatus: 'Planned' | 'Applied' | 'Skipped') => {
     setTrackingRecords((prev) =>
@@ -305,8 +308,8 @@ export function YieldOptimizationPage({ onBack }: YieldOptimizationPageProps) {
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-2xl border border-neutral-200 shadow-2xs">
                 <img
-                  src="/crops/ragi.jpg"
-                  alt="Ragi / Finger Millet"
+                  src={cropImage}
+                  alt={cropDisplayName}
                   className="h-full w-full object-cover"
                   onError={(e) => {
                     ;(e.target as HTMLImageElement).src =
@@ -318,7 +321,7 @@ export function YieldOptimizationPage({ onBack }: YieldOptimizationPageProps) {
               <div className="space-y-2 flex-1 min-w-0">
                 <div className="flex items-center gap-2.5">
                   <h2 className="text-xl sm:text-2xl font-extrabold text-[#17231A] tracking-tight truncate">
-                    Ragi / Finger Millet
+                    {cropDisplayName}
                   </h2>
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/90 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 shrink-0">
                     Selected Crop
@@ -347,7 +350,7 @@ export function YieldOptimizationPage({ onBack }: YieldOptimizationPageProps) {
                   <div className="flex items-center gap-1.5">
                     <Sprout className="h-3.5 w-3.5 text-emerald-700" />
                     <span>
-                      Crop Stage: <strong className="text-neutral-900 font-bold">Vegetative · Day 31–45</strong>
+                      Crop Stage: <strong className="text-neutral-900 font-bold">{cropStage}</strong>
                     </span>
                   </div>
                 </div>
@@ -1452,7 +1455,7 @@ export function YieldOptimizationPage({ onBack }: YieldOptimizationPageProps) {
           cropDetails={cropDetails}
           farmName={farmName}
           locationLabel={farmLocation}
-          area={3}
+          area={activeCrop?.area || Number(currentFarm?.total_area) || 3}
           isOpen={isFarmPlanModalOpen}
           onClose={() => setIsFarmPlanModalOpen(false)}
         />

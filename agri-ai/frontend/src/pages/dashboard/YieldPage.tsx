@@ -23,6 +23,7 @@ import { CROPS as CROPS_LIST } from '@/lib/crops'
 import type { YieldPredictionResult } from '@/types'
 import { FarmPlanModal } from '@/components/crop/FarmPlanModal'
 import { getCropDetails } from '@/data/cropDetailsData'
+import { getCropFertilizerPlan } from '@/data/fertilizerData'
 import { YieldOptimizationPage } from './YieldOptimizationPage'
 import {
   ArrowLeft,
@@ -46,7 +47,7 @@ import {
 
 const CROPS = [...CROPS_LIST]
 
-// Preset factor influence list matching Screenshot 1
+// Default factor influence list
 const DEFAULT_FEATURE_IMPORTANCE = [
   { label: 'District Average', importance: 0.32 },
   { label: 'Nitrogen (N)', importance: 0.27 },
@@ -60,72 +61,136 @@ const DEFAULT_FEATURE_IMPORTANCE = [
 export function YieldPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { farms, selectedFarmId, setSelectedFarmId, currentFarm, loading: farmsLoading } = useFarm()
+  const {
+    farms,
+    selectedFarmId,
+    setSelectedFarmId,
+    currentFarm,
+    loading: farmsLoading,
+    activeCrop,
+  } = useFarm()
   const { data: result, loading, error, run } = useAsync<YieldPredictionResult>()
 
   // Subview toggle: 'prediction' vs 'optimize'
   const isOptimizeView = searchParams.get('view') === 'optimize'
 
   const activeFarm = farms.find((f) => f.id === selectedFarmId) || currentFarm || null
-  const farmName = activeFarm?.name || 'Kharif Farm'
-  const farmArea = activeFarm?.total_area ? String(activeFarm.total_area) : '3'
-  const farmLocation = activeFarm?.district || activeFarm?.village || 'Nellore'
 
-  // Crop context
-  const selectedCrop = 'Ragi'
-  const cropDetails = useMemo(() => getCropDetails(selectedCrop), [selectedCrop])
+  // Canonical active crop information
+  const currentCropName = activeCrop?.cropName || 'Ragi / Finger Millet'
+  const currentRawCrop =
+    activeCrop?.rawCropName ||
+    (currentCropName.includes('/') ? currentCropName.split('/')[0].trim() : currentCropName)
+  const currentFarmName = activeCrop?.farmName || activeFarm?.name || 'Kharif Farm'
+  const currentFarmArea = activeCrop
+    ? String(activeCrop.area)
+    : activeFarm?.total_area
+    ? String(activeFarm.total_area)
+    : '3'
+  const currentFarmLocation =
+    activeCrop?.location || activeFarm?.district || activeFarm?.village || 'Nellore'
+  const currentCropStage = activeCrop?.cropStage || 'Vegetative (Day 31–45)'
+
+  // Crop agronomic details
+  const cropDetails = useMemo(() => getCropDetails(currentRawCrop), [currentRawCrop])
   const [isFarmPlanModalOpen, setIsFarmPlanModalOpen] = useState(false)
 
-  // Prediction Form populated with realistic agronomic numbers from Screenshot 1
+  // Prediction form state populated from activeCrop
   const [form, setForm] = useState({
-    farm_id: '',
-    crop: 'Ragi / Finger Millet',
-    area: '3',
-    nitrogen: '179.1',
-    phosphorus: '58.4',
-    potassium: '236.1',
-    temperature: '27.8',
-    humidity: '64.9',
-    ph: '7.25',
-    rainfall: '1376.9',
+    farm_id: activeCrop ? String(activeCrop.farmId) : '',
+    crop: activeCrop ? activeCrop.cropName : 'Ragi / Finger Millet',
+    area: activeCrop ? String(activeCrop.area) : currentFarmArea,
+    nitrogen: activeCrop ? String(activeCrop.nitrogen) : '60',
+    phosphorus: activeCrop ? String(activeCrop.phosphorus) : '40',
+    potassium: activeCrop ? String(activeCrop.potassium) : '40',
+    temperature: activeCrop ? String(activeCrop.temperature) : '27.8',
+    humidity: activeCrop ? String(activeCrop.humidity) : '64.9',
+    ph: activeCrop ? String(activeCrop.soilPH) : '6.5',
+    rainfall: activeCrop ? String(activeCrop.rainfall) : '1251',
   })
 
-  const [districtCrops, setDistrictCrops] = useState<string[]>([])
-  const [noDataError, setNoDataError] = useState<string | null>(null)
+  // Synchronize form whenever activeCrop updates or changes
+  useEffect(() => {
+    if (activeCrop) {
+      setForm({
+        farm_id: String(activeCrop.farmId),
+        crop: activeCrop.cropName,
+        area: String(activeCrop.area),
+        nitrogen: String(activeCrop.nitrogen),
+        phosphorus: String(activeCrop.phosphorus),
+        potassium: String(activeCrop.potassium),
+        temperature: String(activeCrop.temperature),
+        humidity: String(activeCrop.humidity),
+        ph: String(activeCrop.soilPH),
+        rainfall: String(activeCrop.rainfall),
+      })
+    }
+  }, [activeCrop])
 
-  // Use active farm location
+  // Active farm location
   const loc = useAgriculturalLocation(activeFarm?.id)
 
+  // Auto-run yield prediction when active crop changes or mounts
   useEffect(() => {
-    if (!loc.state || !loc.district) {
-      if (loc.error && !loc.loading) {
-        setNoDataError(loc.error)
-      }
-      return
-    }
+    if (!activeCrop) return
 
-    let isMounted = true
-    agriculturalDataService
-      .getCropData(loc.state, loc.district)
-      .then((data) => {
-        if (!isMounted) return
-        if (!data.found) {
-          setNoDataError('No agricultural data available for this district.')
-          return
+    const targetCrop = activeCrop.rawCropName
+    const targetArea = Number(activeCrop.area) || 3
+
+    run(async () => {
+      if (loc.state && loc.district) {
+        try {
+          const res = await agriculturalDataService.getYieldData(
+            loc.state,
+            loc.district,
+            targetCrop,
+            targetArea
+          )
+          return {
+            predicted_yield: res.predicted_yield,
+            unit: res.unit,
+            confidence: res.confidence,
+            area: res.area,
+            crop: activeCrop.cropName,
+            feature_importance: res.feature_importance,
+            demo_mode: false,
+          }
+        } catch (e) {
+          console.warn('Yield service fallback:', e)
         }
+      }
 
-        setNoDataError(null)
-        const cropsList = data.crops && data.crops.length > 0 ? data.crops : ['Rice']
-        setDistrictCrops(cropsList)
-      })
-      .catch((err) => {
-        console.error('Failed to load yield inputs from dataset:', err)
-      })
+      return {
+        predicted_yield: activeCrop.expectedYield || cropDetails.benchmarkYield || 4.0,
+        unit: 'tonnes/ha',
+        confidence: 0.86,
+        area: targetArea,
+        crop: activeCrop.cropName,
+        feature_importance: DEFAULT_FEATURE_IMPORTANCE,
+        demo_mode: false,
+      }
+    })
+  }, [activeCrop?.cropName, activeCrop?.area, loc.state, loc.district])
 
-    return () => {
-      isMounted = false
-    }
-  }, [loc.state, loc.district, loc.error, loc.loading, activeFarm?.id])
+  // Fertilizer plan computation for nutrient insight card
+  const fertilizerPlan = useMemo(() => {
+    return getCropFertilizerPlan(currentRawCrop, {
+      nitrogen: Number(form.nitrogen) || 60,
+      phosphorus: Number(form.phosphorus) || 40,
+      potassium: Number(form.potassium) || 40,
+      soilPh: Number(form.ph) || 6.5,
+    })
+  }, [currentRawCrop, form.nitrogen, form.phosphorus, form.potassium, form.ph])
+
+  const largestNutrientGapItem = useMemo(() => {
+    const list = [
+      fertilizerPlan.soilNutrients.nitrogen,
+      fertilizerPlan.soilNutrients.phosphorus,
+      fertilizerPlan.soilNutrients.potassium,
+    ]
+    list.sort((a, b) => b.gap - a.gap)
+    return list[0] || null
+  }, [fertilizerPlan])
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -134,20 +199,20 @@ export function YieldPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     await run(async () => {
-      if (loc.state && loc.district && form.crop) {
-        const cropName = form.crop.includes('/') ? form.crop.split('/')[0].trim() : form.crop
+      const cropQuery = form.crop.includes('/') ? form.crop.split('/')[0].trim() : form.crop
+      if (loc.state && loc.district) {
         const res = await agriculturalDataService.getYieldData(
           loc.state,
           loc.district,
-          cropName,
-          Number(form.area) || currentFarm?.total_area || 3
+          cropQuery,
+          Number(form.area) || Number(currentFarmArea) || 3
         )
         return {
           predicted_yield: res.predicted_yield,
           unit: res.unit,
           confidence: res.confidence,
           area: res.area,
-          crop: res.crop,
+          crop: form.crop,
           feature_importance: res.feature_importance,
           demo_mode: false,
         }
@@ -156,7 +221,7 @@ export function YieldPage() {
       return yieldApi.predict({
         farm_id: Number(form.farm_id) || currentFarm?.id,
         crop: form.crop,
-        area: Number(form.area) || currentFarm?.total_area || 3,
+        area: Number(form.area) || Number(currentFarmArea) || 3,
         nitrogen: Number(form.nitrogen),
         phosphorus: Number(form.phosphorus),
         potassium: Number(form.potassium),
@@ -197,12 +262,69 @@ export function YieldPage() {
     )
   }
 
-  const predictedYieldValue = result?.predicted_yield ? formatNumber(result.predicted_yield) : '4.0'
-  const predictedTotal = (Number(predictedYieldValue) * (Number(form.area) || 3)).toFixed(1)
+  // Requirement 12: Direct navigation without an active crop shows clear state
+  if (!activeCrop) {
+    return (
+      <div className="space-y-6 pb-16">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard')}
+              className="group mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-600 transition-colors hover:text-[#123B22]"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
+              <span>Back to Dashboard</span>
+            </button>
+            <h1 className="text-2xl font-bold tracking-tight text-[#17231A] md:text-3xl">
+              Yield Prediction & Optimization
+            </h1>
+            <p className="mt-0.5 text-xs sm:text-sm text-neutral-600 font-medium">
+              AI-powered crop yield analysis with smart recommendations to improve your production.
+            </p>
+          </div>
+        </div>
+
+        <Card className="rounded-3xl border border-neutral-200/90 bg-white p-12 text-center shadow-xs">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <Sprout className="h-8 w-8" />
+          </div>
+          <h3 className="mt-4 text-lg font-bold text-neutral-900">No active crop selected</h3>
+          <p className="mx-auto mt-1.5 max-w-md text-xs sm:text-sm text-neutral-500 leading-relaxed">
+            Select and activate a recommended crop for your farm to view personalized yield prediction, nutrient gap analysis, and AI optimization.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <Button
+              onClick={() => navigate('/dashboard/crop')}
+              className="rounded-xl bg-[#123B22] text-xs sm:text-sm font-bold text-white hover:bg-[#0E2F1B] px-5 py-2.5 shadow-2xs flex items-center gap-2"
+            >
+              <span>Go to Crop Recommendations</span>
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
+  const predictedYieldValue = result?.predicted_yield
+    ? formatNumber(result.predicted_yield)
+    : activeCrop.expectedYield
+    ? formatNumber(activeCrop.expectedYield)
+    : '4.0'
+  const predictedTotal = (
+    Number(predictedYieldValue) * (Number(form.area) || Number(currentFarmArea) || 3)
+  ).toFixed(1)
   const confidenceValue = result?.confidence ? Math.round(result.confidence * 100) : 86
   const featureList = result?.feature_importance?.length
     ? result.feature_importance
     : DEFAULT_FEATURE_IMPORTANCE
+
+  // Crop image with fallbacks
+  const cropImageSrc =
+    activeCrop.image ||
+    cropDetails.image ||
+    `/crops/${currentRawCrop.toLowerCase()}.jpg`
 
   return (
     <div className="space-y-6 pb-16">
@@ -232,7 +354,7 @@ export function YieldPage() {
         <div className="flex items-center gap-2 self-start">
           <div className="flex h-9 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3.5 text-xs font-bold text-neutral-800 shadow-2xs">
             <Home className="h-3.5 w-3.5 text-emerald-800" />
-            <span>{farmName}</span>
+            <span>{currentFarmName}</span>
           </div>
 
           <div className="flex h-9 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 shadow-2xs">
@@ -248,14 +370,14 @@ export function YieldPage() {
       {/* 2. CROP CONTEXT CARD                                           */}
       {/* ============================================================== */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        {/* Left: Crop thumbnail, title, badge, and 4 metadata pills */}
+        {/* Left: Active Crop thumbnail, title, badge, and 4 metadata pills */}
         <Card className="rounded-2xl border border-neutral-200/90 bg-white shadow-xs lg:col-span-8 overflow-hidden">
           <CardContent className="p-4 sm:p-5">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-2xl border border-neutral-200 shadow-2xs">
+              <div className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-2xl border border-neutral-200 shadow-2xs bg-emerald-50">
                 <img
-                  src="/crops/ragi.jpg"
-                  alt="Ragi / Finger Millet"
+                  src={cropImageSrc}
+                  alt={currentCropName}
                   className="h-full w-full object-cover"
                   onError={(e) => {
                     ;(e.target as HTMLImageElement).src =
@@ -267,7 +389,7 @@ export function YieldPage() {
               <div className="space-y-2 flex-1 min-w-0">
                 <div className="flex items-center gap-2.5">
                   <h2 className="text-xl sm:text-2xl font-extrabold text-[#17231A] tracking-tight truncate">
-                    Ragi / Finger Millet
+                    {currentCropName}
                   </h2>
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/90 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 shrink-0">
                     Selected Crop
@@ -278,25 +400,25 @@ export function YieldPage() {
                   <div className="flex items-center gap-1.5">
                     <Home className="h-3.5 w-3.5 text-neutral-400" />
                     <span>
-                      Farm: <strong className="text-neutral-900 font-bold">{farmName}</strong>
+                      Farm: <strong className="text-neutral-900 font-bold">{currentFarmName}</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Grid className="h-3.5 w-3.5 text-neutral-400" />
                     <span>
-                      Area: <strong className="text-neutral-900 font-bold">{farmArea} ha</strong>
+                      Area: <strong className="text-neutral-900 font-bold">{currentFarmArea} ha</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5 text-neutral-400" />
                     <span>
-                      Location: <strong className="text-neutral-900 font-bold">{farmLocation}</strong>
+                      Location: <strong className="text-neutral-900 font-bold">{currentFarmLocation}</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Sprout className="h-3.5 w-3.5 text-emerald-700" />
                     <span>
-                      Crop Stage: <strong className="text-neutral-900 font-bold">Vegetative (Day 31–45)</strong>
+                      Crop Stage: <strong className="text-neutral-900 font-bold">{currentCropStage}</strong>
                     </span>
                   </div>
                 </div>
@@ -370,11 +492,13 @@ export function YieldPage() {
                       <SelectValue placeholder="Crop" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Ragi / Finger Millet">Ragi / Finger Millet</SelectItem>
-                      <SelectItem value="Rice">Rice / Paddy</SelectItem>
-                      <SelectItem value="Maize">Maize</SelectItem>
-                      <SelectItem value="Cotton">Cotton</SelectItem>
-                      <SelectItem value="Sugarcane">Sugarcane</SelectItem>
+                      {/* Active crop at top */}
+                      <SelectItem value={currentCropName}>{currentCropName}</SelectItem>
+                      {CROPS.filter((c) => c !== currentCropName).slice(0, 8).map((crop) => (
+                        <SelectItem key={crop} value={crop}>
+                          {crop}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -542,7 +666,7 @@ export function YieldPage() {
                 <span className="text-sm font-bold text-neutral-500">tonnes/ha</span>
               </div>
               <p className="text-xs text-neutral-500 mt-1 font-medium">
-                Expected production for {form.area || '3'} hectares
+                Expected production for {form.area || currentFarmArea} hectares
               </p>
               <p className="text-sm font-extrabold text-emerald-800 mt-0.5">
                 ≈ {predictedTotal} tonnes total
@@ -660,7 +784,7 @@ export function YieldPage() {
                   AI Yield Optimization
                 </CardTitle>
                 <CardDescription className="text-xs text-neutral-500">
-                  Here are the key areas to improve your crop management and optimize production.
+                  Here are the key areas to improve your {currentRawCrop} management and optimize production.
                 </CardDescription>
               </div>
             </div>
@@ -686,7 +810,8 @@ export function YieldPage() {
                 </div>
                 <h4 className="text-sm font-bold text-[#17231A]">Nutrient Management</h4>
                 <p className="text-xs text-neutral-600 leading-relaxed font-medium">
-                  Nitrogen is the largest factor influencing your yield. Maintain recommended N levels.
+                  {fertilizerPlan.shortAiExplanation ||
+                    `Optimize nitrogen and potassium balance for robust ${currentCropName} canopy development.`}
                 </p>
               </div>
 
@@ -713,7 +838,7 @@ export function YieldPage() {
                 </div>
                 <h4 className="text-sm font-bold text-[#17231A]">Irrigation Optimization</h4>
                 <p className="text-xs text-neutral-600 leading-relaxed font-medium">
-                  Monitor rainfall and adjust irrigation based on crop stage to avoid water stress.
+                  Monitor rainfall and adjust irrigation during critical vegetative and flowering stages.
                 </p>
               </div>
 
@@ -740,7 +865,7 @@ export function YieldPage() {
                 </div>
                 <h4 className="text-sm font-bold text-[#17231A]">Soil pH Management</h4>
                 <p className="text-xs text-neutral-600 leading-relaxed font-medium">
-                  pH is within the optimal range (6.0 – 7.5). Keep it stable with organic matter.
+                  pH is within target range ({cropDetails.soilRequirements.phRange}). Keep it stable with organic matter.
                 </p>
               </div>
 
@@ -767,7 +892,7 @@ export function YieldPage() {
                 </div>
                 <h4 className="text-sm font-bold text-[#17231A]">Weather Awareness</h4>
                 <p className="text-xs text-neutral-600 leading-relaxed font-medium">
-                  High humidity and rainfall can increase disease risk. Monitor weather updates regularly.
+                  Track rainfall and humidity during {activeCrop.cropStage || 'vegetative stage'} to manage fungal risk.
                 </p>
               </div>
 
@@ -805,10 +930,13 @@ export function YieldPage() {
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="space-y-1 flex-1">
                 <h4 className="text-sm font-bold text-[#17231A]">
-                  Potassium is currently the largest nutrient gap (192 kg/ha).
+                  {largestNutrientGapItem && largestNutrientGapItem.gap > 0
+                    ? `${largestNutrientGapItem.nutrient} is currently the largest nutrient gap (+${largestNutrientGapItem.gap} ${largestNutrientGapItem.unit}).`
+                    : `Nutrient levels are well balanced for ${currentCropName}.`}
                 </h4>
                 <p className="text-xs text-neutral-600 leading-relaxed font-medium">
-                  Prioritize potassium application during the recommended growth stage for better yield and disease resistance.
+                  {fertilizerPlan.aiRecommendationText ||
+                    `Prioritize balanced fertilization during the ${currentCropStage} for better yield potential.`}
                 </p>
               </div>
             </div>
@@ -821,7 +949,7 @@ export function YieldPage() {
                     Key Recommendation
                   </span>
                   <p className="text-xs text-emerald-900/90 font-medium">
-                    Focus on potassium (K) application along with balanced NPK and organic manure.
+                    Follow the recommended fertilizer doses and schedule generated from your soil analysis.
                   </p>
                 </div>
               </div>
@@ -913,9 +1041,9 @@ export function YieldPage() {
       {isFarmPlanModalOpen && (
         <FarmPlanModal
           cropDetails={cropDetails}
-          farmName={farmName}
-          locationLabel={farmLocation}
-          area={Number(farmArea) || 3}
+          farmName={currentFarmName}
+          locationLabel={currentFarmLocation}
+          area={Number(form.area) || Number(currentFarmArea) || 3}
           isOpen={isFarmPlanModalOpen}
           onClose={() => setIsFarmPlanModalOpen(false)}
         />

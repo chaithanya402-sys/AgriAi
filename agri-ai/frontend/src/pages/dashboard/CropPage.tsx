@@ -96,7 +96,7 @@ function FeatureImportanceChart({
 }
 
 export function CropPage() {
-  const { farms, selectedFarmId, setSelectedFarmId, currentFarm, loading: farmsLoading } = useFarm()
+  const { farms, selectedFarmId, setSelectedFarmId, currentFarm, loading: farmsLoading, activateCropPlan } = useFarm()
   const { data: result, loading, error, run } = useAsync<CropRecommendationResult>()
 
   const activeFarm = farms.find((f) => f.id === selectedFarmId) || currentFarm || null
@@ -728,12 +728,35 @@ export function CropPage() {
             area: Number(form.area) || 4,
           }}
           onSelectCrop={(cropName) => {
-            try {
-              localStorage.setItem('agriai_selected_crop', cropName)
-              sessionStorage.setItem('agriai_selected_crop', cropName)
-            } catch (err) {
-              console.warn('Failed to save selected crop:', err)
-            }
+            const raw = cropName.includes('/') ? cropName.split('/')[0].trim() : cropName
+            const details = getCropDetails(raw)
+            const matchingCrop = full39CropList.find(
+              (c) => c.crop.trim().toLowerCase() === cropName.trim().toLowerCase()
+            )
+
+            activateCropPlan({
+              cropName: details.displayName || cropName,
+              rawCropName: raw,
+              farmId: activeFarm?.id || 1,
+              farmName: activeFarm?.name || 'Kharif Farm',
+              location: loc.district || activeFarm?.district || activeFarm?.village || 'Nellore',
+              state: loc.state || activeFarm?.state || undefined,
+              district: loc.district || activeFarm?.district || undefined,
+              area: Number(form.area) || activeFarm?.total_area || 4,
+              nitrogen: Number(form.nitrogen) || 60,
+              phosphorus: Number(form.phosphorus) || 40,
+              potassium: Number(form.potassium) || 40,
+              soilPH: Number(form.ph) || 6.5,
+              temperature: Number(form.temperature) || 24.5,
+              humidity: Number(form.humidity) || 66.1,
+              rainfall: Number(form.rainfall) || 1251,
+              cropStage: 'Vegetative (Day 31–45)',
+              season: details.climateRequirements?.season || 'Kharif Season',
+              recommendationScore: matchingCrop?.score || details.matchScore,
+              expectedYield: matchingCrop?.expected_yield || details.benchmarkYield,
+              riskLevel: matchingCrop?.risk && matchingCrop.risk <= 0.35 ? 'Low' : details.riskLevel,
+              image: details.image,
+            })
           }}
         />
       )}

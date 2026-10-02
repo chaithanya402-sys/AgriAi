@@ -25,6 +25,7 @@ import {
   Info,
 } from 'lucide-react'
 import type { CropDetailInfo } from '@/data/cropDetailsData'
+import { useFarm } from '@/components/farm/FarmContext'
 
 export interface FarmPlanContentProps {
   cropDetails: CropDetailInfo
@@ -63,6 +64,7 @@ export function FarmPlanContent({
   onBack,
   isModal = false,
 }: FarmPlanContentProps) {
+  const { activateCropPlan, currentFarm } = useFarm()
   const [activeStepId, setActiveStepId] = useState<number>(1)
   const [completedTaskIds, setCompletedTaskIds] = useState<string[]>([])
   const [activeWhyTaskId, setActiveWhyTaskId] = useState<string | null>(null)
@@ -355,6 +357,21 @@ export function FarmPlanContent({
     setIsPlanActivated(true)
     setShowActivatedToast(true)
     setTimeout(() => setShowActivatedToast(false), 3500)
+
+    const raw = cropDetails.name
+    activateCropPlan({
+      cropName: cropDetails.displayName,
+      rawCropName: raw,
+      farmId: currentFarm?.id || 1,
+      farmName: farmName || currentFarm?.name || 'Kharif Farm',
+      location: locationLabel || currentFarm?.district || currentFarm?.village || 'Nellore',
+      area: area || Number(currentFarm?.total_area) || 4,
+      image: cropDetails.image,
+      cropStage: 'Vegetative (Day 31–45)',
+      season: cropDetails.climateRequirements?.season || 'Kharif Season',
+      expectedYield: cropDetails.benchmarkYield,
+      riskLevel: cropDetails.riskLevel,
+    })
   }
 
   const formatProfit = (val: number) => {
