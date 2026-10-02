@@ -717,7 +717,7 @@ export function IrrigationPage() {
 
         <button
           type="button"
-          onClick={() => setIsFarmPlanModalOpen(true)}
+          onClick={() => navigate('/dashboard/action-plan')}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#123B22] px-4 py-2.5 text-xs sm:text-sm font-bold text-white hover:bg-[#0E2F1B] transition-colors shadow-2xs shrink-0"
         >
           <span>View Full Crop Action Plan</span>

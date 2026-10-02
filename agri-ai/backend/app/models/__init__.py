@@ -6,6 +6,9 @@ from app.models.analytics import (
     FertilizerRecommendation, DiseasePrediction, MarketPrice, FarmAlert,
     OptimizationResult,
 )
+from app.models.action_plan import (
+    ActionPlanStep, ActionStepChecklist, UserActionProgress, UserChecklistProgress,
+)
 
 # Import all models so create_all() registers them
 __all__ = [
@@ -13,4 +16,5 @@ __all__ = [
     "CropPrediction", "YieldPrediction", "WeatherRecord",
     "IrrigationRecommendation", "FertilizerRecommendation",
     "DiseasePrediction", "MarketPrice", "FarmAlert", "OptimizationResult",
+    "ActionPlanStep", "ActionStepChecklist", "UserActionProgress", "UserChecklistProgress",
 ]

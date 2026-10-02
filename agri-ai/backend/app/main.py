@@ -6,7 +6,7 @@ from app.models import user, farm  # noqa: F401 (register models)
 from app.routes import (
     auth, farms, soil, crop, yield_prediction,
     fertilizer, irrigation, weather, disease, risk, market, profit,
-    optimize, assistant, notifications, reports, data,
+    optimize, assistant, notifications, reports, data, action_plan,
 )
 from app.utils.security import get_current_user
 from app.models.user import User
@@ -78,3 +78,4 @@ app.include_router(assistant.router)
 app.include_router(notifications.router)
 app.include_router(reports.router)
 app.include_router(data.router)
+app.include_router(action_plan.router)

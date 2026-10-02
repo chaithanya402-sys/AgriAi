@@ -85,6 +85,68 @@ export const irrigationApi = {
   recommend: (data: Record<string, unknown>) => request('/irrigation/recommend', { method: 'POST', body: data }),
 }
 
+export interface ActionChecklistItem {
+  id: number
+  item_key?: string
+  name: string
+  spec?: string
+  description?: string
+  sort_order: number
+  completed: boolean
+}
+
+export interface ActionPlanStepItem {
+  id: number
+  crop_name: string
+  step_number: number
+  title: string
+  description?: string
+  timeframe?: string
+  stage?: string
+  youtube_video_id: string
+  youtube_title?: string
+  youtube_duration?: string
+  learn_points: string[]
+  why_explanation?: string
+  tutorial_watched: boolean
+  tutorial_watched_at?: string
+  status: 'pending' | 'in_progress' | 'completed'
+  completed_at?: string
+  checklists: ActionChecklistItem[]
+}
+
+export interface ActionPlanProgressData {
+  farm_id: number
+  crop_name: string
+  completed_steps: number
+  total_steps: number
+  percent: number
+  active_step: number
+}
+
+// ---- Farm Action Plan & YouTube Tutorials ----
+export const actionPlanApi = {
+  getSteps: (crop: string, farmId: number) =>
+    request<ActionPlanStepItem[]>(`/action-plan/steps?crop=${encodeURIComponent(crop)}&farm_id=${farmId}`),
+  recordTutorialWatched: (stepId: number, farmId: number, cropName: string) =>
+    request(`/action-plan/steps/${stepId}/tutorial-progress`, {
+      method: 'POST',
+      body: { farm_id: farmId, crop_name: cropName },
+    }),
+  toggleChecklist: (stepId: number, itemId: number, farmId: number, cropName: string, completed: boolean) =>
+    request(`/action-plan/steps/${stepId}/checklist/${itemId}`, {
+      method: 'POST',
+      body: { farm_id: farmId, crop_name: cropName, completed },
+    }),
+  completeStep: (stepId: number, farmId: number, cropName: string) =>
+    request(`/action-plan/steps/${stepId}/complete`, {
+      method: 'POST',
+      body: { farm_id: farmId, crop_name: cropName },
+    }),
+  getProgress: (farmId: number, crop: string) =>
+    request<ActionPlanProgressData>(`/action-plan/progress?farm_id=${farmId}&crop=${encodeURIComponent(crop)}`),
+}
+
 // ---- Weather ----
 export const weatherApi = {
   current: (lat: number, lon: number) => request(`/weather/current?lat=${lat}&lon=${lon}`),

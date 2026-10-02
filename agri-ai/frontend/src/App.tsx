@@ -17,6 +17,7 @@ import { CropPage } from '@/pages/dashboard/CropPage'
 import { YieldPage } from '@/pages/dashboard/YieldPage'
 import { YieldOptimizationPage } from '@/pages/dashboard/YieldOptimizationPage'
 import { IrrigationPage } from '@/pages/dashboard/IrrigationPage'
+import { CropActionPlanPage } from '@/pages/dashboard/CropActionPlanPage'
 import { WeatherPage } from '@/pages/dashboard/WeatherPage'
 import { DiseasePage } from '@/pages/dashboard/DiseasePage'
 import { FertilizerPage } from '@/pages/dashboard/FertilizerPage'
@@ -59,6 +60,7 @@ export default function App() {
         <Route path="yield" element={<YieldPage />} />
         <Route path="yield/optimize" element={<YieldOptimizationPage />} />
         <Route path="irrigation" element={<IrrigationPage />} />
+        <Route path="action-plan" element={<CropActionPlanPage />} />
         <Route path="weather" element={<WeatherPage />} />
         <Route path="disease" element={<DiseasePage />} />
         <Route path="fertilizer" element={<FertilizerPage />} />

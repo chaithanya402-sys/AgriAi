@@ -64,11 +64,12 @@ export function DashboardLayout() {
       items: [
         { to: '/dashboard/soil',       label: 'Soil Analysis',        icon: FlaskConical },
         { to: '/dashboard/crop',       label: 'Crop Recommendation',  icon: Sprout },
-        { to: '/dashboard/yield',      label: 'Yield Prediction',     icon: TrendingUp },
         { to: '/dashboard/irrigation', label: 'Irrigation',           icon: Droplets },
+        { to: '/dashboard/action-plan', label: 'Crop Action Plan',    icon: Sprout },
+        { to: '/dashboard/yield',      label: 'Yield Prediction',     icon: TrendingUp },
         { to: '/dashboard/weather',    label: 'Weather',              icon: CloudSun },
         { to: '/dashboard/disease',    label: 'Disease Detection',    icon: Bug },
-        { to: '/dashboard/fertilizer',label: 'Fertilizer',           icon: FlaskConical },
+        { to: '/dashboard/fertilizer', label: 'Fertilizer',           icon: FlaskConical },
       ],
     },
     {
