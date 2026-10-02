@@ -215,3 +215,31 @@ html.dark .custom-doc-scrollbar::-webkit-scrollbar-thumb {
 html.dark .custom-doc-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: #274836;
 }
+
+/* Subtle float animations for landing hero */
+@keyframes heroFloatSlow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes heroFloatReverse {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+
+.animate-hero-float {
+  animation: heroFloatSlow 6s ease-in-out infinite;
+}
+
+.animate-hero-float-delayed {
+  animation: heroFloatReverse 7s ease-in-out infinite 1s;
+}
+

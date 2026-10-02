@@ -159,34 +159,37 @@ export function DashboardLayout() {
           </div>
         )}
 
-        {/* ── Mobile top bar ───────────────────────────────────────── */}
-        <div className="flex-1 lg:hidden">
-          <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-neutral-200 bg-white px-4 dark:border-neutral-800 dark:bg-neutral-900">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-1 text-neutral-700 hover:text-[#2E7D32] dark:text-neutral-300"
-              aria-label="Open menu"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-            <Link to="/dashboard" className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#2E7D32] text-white">
-                <Leaf className="h-4 w-4" />
-              </div>
-              <span className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
-                Agri<span className="text-[#2E7D32]">AI</span>
-              </span>
-            </Link>
-            <div className="w-7" />
-          </header>
-        </div>
-
-        {/* ── Main content ─────────────────────────────────────────── */}
-        <main className="min-w-0 flex-1 p-4 lg:p-6">
-          <div className="mx-auto max-w-6xl pb-20 lg:pb-6">
-            <Outlet />
+        {/* ── Main Content Area ─────────────────────────────────────── */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* ── Mobile top bar ───────────────────────────────────────── */}
+          <div className="lg:hidden">
+            <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-neutral-200 bg-white px-4 dark:border-neutral-800 dark:bg-neutral-900">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-1 text-neutral-700 hover:text-[#2E7D32] dark:text-neutral-300"
+                aria-label="Open menu"
+              >
+                <Menu className="h-6 w-6" />
+              </button>
+              <Link to="/dashboard" className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#2E7D32] text-white">
+                  <Leaf className="h-4 w-4" />
+                </div>
+                <span className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+                  Agri<span className="text-[#2E7D32]">AI</span>
+                </span>
+              </Link>
+              <div className="w-7" />
+            </header>
           </div>
-        </main>
+
+          {/* ── Main content ─────────────────────────────────────────── */}
+          <main className="min-w-0 flex-1 p-4 lg:p-6">
+            <div className="w-full pb-20 lg:pb-6">
+              <Outlet />
+            </div>
+          </main>
+        </div>
       </div>
     </div>
   )

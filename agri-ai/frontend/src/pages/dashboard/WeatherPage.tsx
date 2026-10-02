@@ -70,6 +70,22 @@ function DemoBadge() {
   )
 }
 
+function LiveBadge() {
+  return (
+    <Badge variant="success" className="gap-1.5 bg-emerald-50 text-emerald-700 border-emerald-200">
+      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+      Live OpenWeather
+    </Badge>
+  )
+}
+
+function formatWeatherSource(source: string) {
+  if (!source) return 'Live Telemetry'
+  if (source.toLowerCase() === 'openweather') return 'OpenWeather (Live)'
+  if (source.toLowerCase() === 'demo') return 'Demo'
+  return source
+}
+
 const STATUS_ICONS = {
   temperature: <ThermometerSun className="h-5 w-5" />,
   humidity: <Droplets className="h-5 w-5" />,
@@ -157,7 +173,7 @@ export function WeatherPage() {
         description="Current conditions and 7-day forecast for your farm."
         right={
           <div className="flex items-center gap-3">
-            {demo && <DemoBadge />}
+            {demo ? <DemoBadge /> : <LiveBadge />}
             <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
               {loading ? <ButtonLoader label="Refreshing…" /> : <RefreshCw className="h-4 w-4" />}
               <span className="hidden sm:inline">Refresh</span>
@@ -336,7 +352,7 @@ function CurrentConditions({ weather }: { weather: CurrentWeather }) {
         <div>
           <CardTitle>Current conditions</CardTitle>
           <CardDescription>
-            {weather.condition} · {weather.source}
+            {weather.condition} · {formatWeatherSource(weather.source)}
           </CardDescription>
         </div>
         <Badge variant="info" className="gap-1">

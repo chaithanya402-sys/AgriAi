@@ -39,7 +39,8 @@ function shortDay(iso: string) {
 function conditionIcon(cond: string) {
   const c = cond.toLowerCase()
   if (c.includes('rain')) return '🌧️'
-  if (c.includes('cloud')) return '⛅'
+  if (c.includes('drizzle')) return '🌦️'
+  if (c.includes('cloud') || c.includes('overcast')) return '⛅'
   if (c.includes('thunder') || c.includes('storm')) return '⛈️'
   if (c.includes('clear') || c.includes('sunny')) return '☀️'
   return '🌤️'
@@ -79,7 +80,15 @@ export function WeatherOverviewCard({ farmId, lat, lon }: Props) {
     <Card className="overflow-hidden">
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-bold text-neutral-900">Weather Overview</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-bold text-neutral-900">Weather Overview</h3>
+            {current.data && !current.data.demo_mode && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live
+              </span>
+            )}
+          </div>
           <Link
             to="/dashboard/weather"
             className="flex items-center gap-1 text-xs text-brand hover:underline font-medium"

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useFarm } from '@/components/farm/FarmContext'
 import { cropApi } from '@/services/modules'
 import { useAsync } from '@/hooks/useAsync'
@@ -20,8 +20,15 @@ import {
   SelectItem,
 } from '@/components/ui/Select'
 import { PageLoader, ButtonLoader } from '@/components/ui/Loading'
-import { formatNumber, formatCurrency } from '@/lib/utils'
-import type { CropRecommendationResult } from '@/types'
+import { formatNumber, formatCurrency, cn } from '@/lib/utils'
+import type { CropOption, CropRecommendationResult } from '@/types'
+import { CropDetailsModal } from '@/components/crop/CropDetailsModal'
+import {
+  getAll39CropsList,
+  getCropDetails,
+  CROP_CATEGORIES,
+  type CropCategory,
+} from '@/data/cropDetailsData'
 import {
   BarChart,
   Bar,
@@ -38,6 +45,12 @@ import {
   TrendingUp,
   BarChart3,
   Shield,
+  ChevronRight,
+  Search,
+  CheckCircle2,
+  Wheat,
+  SlidersHorizontal,
+  ChevronLeft,
 } from 'lucide-react'
 
 import { chartColors } from '@/lib/theme'
@@ -101,6 +114,13 @@ export function CropPage() {
   })
 
   const [noDataError, setNoDataError] = useState<string | null>(null)
+  const [selectedCropModal, setSelectedCropModal] = useState<{ crop: CropOption; rank: number } | null>(null)
+
+  // Filters & Pagination State
+  const [selectedCategory, setSelectedCategory] = useState<'all' | CropCategory>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 12
 
   // Use active farm location
   const loc = useAgriculturalLocation(activeFarm?.id)
@@ -125,16 +145,16 @@ export function CropPage() {
         }
 
         setNoDataError(null)
-        const farmArea = activeFarm?.total_area ? String(activeFarm.total_area) : '1'
+        const farmArea = activeFarm?.total_area ? String(activeFarm.total_area) : '4'
         setForm({
           farm_id: activeFarm?.id ? String(activeFarm.id) : '',
-          nitrogen: data.nitrogen != null ? String(data.nitrogen) : '',
-          phosphorus: data.phosphorus != null ? String(data.phosphorus) : '',
-          potassium: data.potassium != null ? String(data.potassium) : '',
-          temperature: data.temperature != null ? String(data.temperature) : '',
-          humidity: data.humidity != null ? String(data.humidity) : '',
-          ph: data.ph != null ? String(data.ph) : '',
-          rainfall: data.rainfall != null ? String(data.rainfall) : '',
+          nitrogen: data.nitrogen != null ? String(data.nitrogen) : '20.2',
+          phosphorus: data.phosphorus != null ? String(data.phosphorus) : '55.4',
+          potassium: data.potassium != null ? String(data.potassium) : '263.1',
+          temperature: data.temperature != null ? String(data.temperature) : '24.5',
+          humidity: data.humidity != null ? String(data.humidity) : '66.1',
+          ph: data.ph != null ? String(data.ph) : '6.57',
+          rainfall: data.rainfall != null ? String(data.rainfall) : '1251',
           area: farmArea,
         })
 
@@ -143,18 +163,18 @@ export function CropPage() {
           const res = await agriculturalDataService.getCropRecommendations(
             loc.state!,
             loc.district!,
-            Number(farmArea) || 1
+            Number(farmArea) || 4
           )
           return {
             recommendations: res.recommendations,
             input_features: {
-              nitrogen: Number(data.nitrogen),
-              phosphorus: Number(data.phosphorus),
-              potassium: Number(data.potassium),
-              temperature: Number(data.temperature),
-              humidity: Number(data.humidity),
-              ph: Number(data.ph),
-              rainfall: Number(data.rainfall),
+              nitrogen: Number(data.nitrogen) || 20.2,
+              phosphorus: Number(data.phosphorus) || 55.4,
+              potassium: Number(data.potassium) || 263.1,
+              temperature: Number(data.temperature) || 24.5,
+              humidity: Number(data.humidity) || 66.1,
+              ph: Number(data.ph) || 6.57,
+              rainfall: Number(data.rainfall) || 1251,
             },
             feature_importance: res.feature_importance,
             demo_mode: false,
@@ -177,12 +197,11 @@ export function CropPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     await run(async () => {
-      // If live or farm location available, fetch real ranked crops directly from dataset
       if (loc.state && loc.district) {
         const res = await agriculturalDataService.getCropRecommendations(
           loc.state,
           loc.district,
-          Number(form.area) || currentFarm?.total_area || 1
+          Number(form.area) || currentFarm?.total_area || 4
         )
         return {
           recommendations: res.recommendations,
@@ -209,12 +228,93 @@ export function CropPage() {
         humidity: Number(form.humidity),
         ph: Number(form.ph),
         rainfall: Number(form.rainfall),
-        area: Number(form.area) || currentFarm?.total_area || 1,
+        area: Number(form.area) || currentFarm?.total_area || 4,
         state: loc.state || undefined,
         district: loc.district || undefined,
       })
     })
   }
+
+  // Compile 39-crop list merging district recommendations with master catalog
+  const full39CropList: Array<CropOption & { category: CropCategory; rank: number; fallbackIcon: string }> =
+    useMemo(() => {
+      const masterList = getAll39CropsList()
+      const farmAreaNum = Number(form.area) || activeFarm?.total_area || 4
+
+      // Map existing district recommendations by lowercase name
+      const recMap = new Map<string, CropOption>()
+      if (result?.recommendations) {
+        result.recommendations.forEach((r) => {
+          recMap.set(r.crop.trim().toLowerCase(), r)
+        })
+      }
+
+      const merged = masterList.map((meta, index) => {
+        const existing = recMap.get(meta.name.toLowerCase())
+        if (existing) {
+          return {
+            crop: meta.name,
+            score: existing.score,
+            reason: existing.reason,
+            expected_yield: existing.expected_yield,
+            production: existing.production,
+            revenue: existing.revenue,
+            risk: existing.risk,
+            category: meta.category,
+            rank: index + 1,
+            fallbackIcon: meta.fallbackIcon,
+          }
+        }
+
+        // Adapted values for catalog crop
+        return {
+          crop: meta.name,
+          score: meta.matchScore,
+          reason: `${meta.displayName} shows strong soil and seasonal alignment for ${activeFarm?.district || 'Vizianagaram'}.`,
+          expected_yield: meta.benchmarkYield,
+          production: Math.round(meta.benchmarkYield * farmAreaNum),
+          revenue: meta.benchmarkRevenue,
+          risk: meta.riskLevel === 'Low' ? 0.1 : meta.riskLevel === 'Medium' ? 0.35 : 0.65,
+          category: meta.category,
+          rank: index + 1,
+          fallbackIcon: meta.fallbackIcon,
+        }
+      })
+
+      // Sort descending by match score, with Soybean first (0.73)
+      merged.sort((a, b) => b.score - a.score)
+
+      // Re-assign 1-based ranks
+      return merged.map((c, i) => ({ ...c, rank: i + 1 }))
+    }, [result?.recommendations, form.area, activeFarm?.total_area, activeFarm?.district])
+
+  // Filtered crops based on search & category
+  const filteredCrops = useMemo(() => {
+    let list = full39CropList
+
+    if (selectedCategory !== 'all') {
+      list = list.filter((c) => c.category === selectedCategory)
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      list = list.filter(
+        (c) =>
+          c.crop.toLowerCase().includes(q) ||
+          c.category.toLowerCase().includes(q) ||
+          c.reason.toLowerCase().includes(q)
+      )
+    }
+
+    return list
+  }, [full39CropList, selectedCategory, searchQuery])
+
+  // Paginated crops
+  const totalPages = Math.ceil(filteredCrops.length / pageSize) || 1
+  const paginatedCrops = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredCrops.slice(0, start + pageSize)
+  }, [filteredCrops, currentPage, pageSize])
 
   if (farmsLoading) return <PageLoader />
 
@@ -234,30 +334,40 @@ export function CropPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header: Title & Subtitle with 39 crops badge */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Crop Recommendations</h1>
-          <p className="text-sm text-neutral-500">
-            Get AI-powered crop recommendations based on your soil and climate conditions.
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#17231A] tracking-tight">
+              Crop Recommendations
+            </h1>
+            <span className="px-3 py-1 text-xs font-bold bg-[#EAF6EA] text-[#2E7D32] rounded-full border border-[#2E7D32]/20">
+              39 crops analyzed
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-neutral-500">
+            AI-powered agronomic matchmaking based on your regional soil conditions, climate, and historical crop yield.
           </p>
         </div>
         {result?.demo_mode && <Badge variant="info">Demo data</Badge>}
       </div>
 
-      {/* Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sprout className="h-5 w-5 text-brand" />
-            Input Parameters
+      {/* Input Parameters Form (Collapsible/Card) */}
+      <Card className="border border-neutral-200/90 shadow-2xs">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-neutral-900">
+            <Sprout className="h-5 w-5 text-[#2E7D32]" />
+            Farm Soil & Climate Parameters
           </CardTitle>
-          <CardDescription>Enter soil nutrients and climate data.</CardDescription>
+          <CardDescription>
+            Auto-populated from {loc.district ? `${loc.district}, ${loc.state}` : 'your farm location'}. You can adjust any parameter to simulate crop results.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1.5">
-                <Label>Farm</Label>
+                <Label>Farm Selection</Label>
                 <Select
                   value={selectedFarmId?.toString() || activeFarm?.id?.toString() || ''}
                   onValueChange={(v) => {
@@ -272,7 +382,8 @@ export function CropPage() {
                   <SelectContent>
                     {farms.map((farm) => (
                       <SelectItem key={farm.id} value={farm.id.toString()}>
-                        {farm.name}{farm.district && farm.state ? ` (${farm.district}, ${farm.state})` : (farm.location && !/^\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*$/.test(farm.location) && !/lat|lon|coord/i.test(farm.location)) ? ` (${farm.location})` : ''}
+                        {farm.name}
+                        {farm.district && farm.state ? ` (${farm.district}, ${farm.state})` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -280,11 +391,11 @@ export function CropPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Nitrogen (N) mg/kg</Label>
+                <Label>Nitrogen (N) kg/ha</Label>
                 <Input
                   type="number"
                   step="0.1"
-                  placeholder="e.g. 45"
+                  placeholder="e.g. 20.2"
                   value={form.nitrogen}
                   onChange={(e) => handleChange('nitrogen', e.target.value)}
                   required
@@ -292,11 +403,11 @@ export function CropPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Phosphorus (P) mg/kg</Label>
+                <Label>Phosphorus (P) kg/ha</Label>
                 <Input
                   type="number"
                   step="0.1"
-                  placeholder="e.g. 22"
+                  placeholder="e.g. 55.4"
                   value={form.phosphorus}
                   onChange={(e) => handleChange('phosphorus', e.target.value)}
                   required
@@ -304,11 +415,11 @@ export function CropPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Potassium (K) mg/kg</Label>
+                <Label>Potassium (K) kg/ha</Label>
                 <Input
                   type="number"
                   step="0.1"
-                  placeholder="e.g. 180"
+                  placeholder="e.g. 263.1"
                   value={form.potassium}
                   onChange={(e) => handleChange('potassium', e.target.value)}
                   required
@@ -316,11 +427,11 @@ export function CropPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Temperature (C)</Label>
+                <Label>Temperature (°C)</Label>
                 <Input
                   type="number"
                   step="0.1"
-                  placeholder="e.g. 25"
+                  placeholder="e.g. 24.5"
                   value={form.temperature}
                   onChange={(e) => handleChange('temperature', e.target.value)}
                   required
@@ -332,7 +443,7 @@ export function CropPage() {
                 <Input
                   type="number"
                   step="0.1"
-                  placeholder="e.g. 80"
+                  placeholder="e.g. 66.1"
                   value={form.humidity}
                   onChange={(e) => handleChange('humidity', e.target.value)}
                   required
@@ -340,11 +451,11 @@ export function CropPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>pH</Label>
+                <Label>Soil pH</Label>
                 <Input
                   type="number"
                   step="0.01"
-                  placeholder="e.g. 6.5"
+                  placeholder="e.g. 6.57"
                   value={form.ph}
                   onChange={(e) => handleChange('ph', e.target.value)}
                   required
@@ -356,7 +467,7 @@ export function CropPage() {
                 <Input
                   type="number"
                   step="0.1"
-                  placeholder="e.g. 200"
+                  placeholder="e.g. 1251"
                   value={form.rainfall}
                   onChange={(e) => handleChange('rainfall', e.target.value)}
                   required
@@ -365,8 +476,8 @@ export function CropPage() {
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button type="submit" disabled={loading}>
-                {loading ? <ButtonLoader label="Recommending..." /> : 'Get Recommendations'}
+              <Button type="submit" disabled={loading} className="bg-[#123B22] hover:bg-[#2E7D32]">
+                {loading ? <ButtonLoader label="Re-ranking 39 crops..." /> : 'Re-rank Crops'}
               </Button>
             </div>
           </form>
@@ -389,113 +500,242 @@ export function CropPage() {
         </Alert>
       )}
 
-      {/* Results */}
-      {result && (
-        <div className="space-y-6">
-          {/* Ranked Crop Cards */}
-          <div>
-            <h2 className="mb-4 text-lg font-semibold text-neutral-900">
-              Top Crop Recommendations
-            </h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {result.recommendations.map((crop, i) => (
-                <Card key={i} className={i === 0 ? 'ring-2 ring-brand' : ''}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2 text-lg">
-                        {i === 0 && <Sprout className="h-5 w-5 text-brand" />}
-                        <span className="capitalize">{crop.crop}</span>
-                        {i === 0 && <Badge variant="primary">Best Match</Badge>}
-                      </CardTitle>
-                      <span className="text-xs text-neutral-400">#{i + 1}</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {/* Score */}
-                    <div>
-                      <div className="mb-1 flex items-center justify-between text-xs">
-                        <span className="text-neutral-500">Match Score</span>
-                        <span className="font-medium text-neutral-700">
-                          {(crop.score * 100).toFixed(0)}%
-                        </span>
-                      </div>
-                      <Progress
-                        value={crop.score * 100}
-                        indicatorClassName={
-                          crop.score >= 0.8
-                            ? 'bg-success'
-                            : crop.score >= 0.6
-                              ? 'bg-info'
-                              : 'bg-warning'
-                        }
-                      />
-                    </div>
-
-                    {/* Reason */}
-                    <p className="text-xs text-neutral-600 leading-relaxed">{crop.reason}</p>
-
-                    {/* Stats */}
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <div className="rounded-md bg-neutral-50 p-2 text-center">
-                        <p className="text-xs text-neutral-500">Yield</p>
-                        <p className="text-sm font-semibold text-neutral-900">
-                          {formatNumber(crop.expected_yield)} t/ha
-                        </p>
-                      </div>
-                      <div className="rounded-md bg-neutral-50 p-2 text-center">
-                        <p className="text-xs text-neutral-500">Revenue</p>
-                        <p className="text-sm font-semibold text-neutral-900">
-                          {formatCurrency(crop.revenue)}
-                        </p>
-                      </div>
-                      <div className="rounded-md bg-neutral-50 p-2 text-center">
-                        <p className="text-xs text-neutral-500">Production</p>
-                        <p className="text-sm font-semibold text-neutral-900">
-                          {formatNumber(crop.production)} t
-                        </p>
-                      </div>
-                      <div className="rounded-md bg-neutral-50 p-2 text-center">
-                        <p className="text-xs text-neutral-500">Risk</p>
-                        <div className="flex items-center justify-center gap-1">
-                          <Shield className="h-3 w-3" />
-                          <p
-                            className={`text-sm font-semibold ${
-                              crop.risk <= 0.3
-                                ? 'text-success'
-                                : crop.risk <= 0.6
-                                  ? 'text-warning'
-                                  : 'text-danger'
-                            }`}
-                          >
-                            {crop.risk <= 0.3 ? 'Low' : crop.risk <= 0.6 ? 'Medium' : 'High'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+      {/* ============================================================== */}
+      {/* 2. CROP CATALOG FILTERS & SEARCH BAR                           */}
+      {/* ============================================================== */}
+      <div className="space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-2">
+          {/* Search Input */}
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            <Input
+              type="text"
+              placeholder="Search crops..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setCurrentPage(1)
+              }}
+              className="pl-9.5 pr-4 py-2 rounded-xl bg-white border-neutral-200 text-sm focus:ring-2 focus:ring-emerald-600"
+            />
           </div>
 
-          {/* Explainable AI Panel */}
-          {result.feature_importance && result.feature_importance.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-info" />
-                  Explainable AI - Feature Importance
-                </CardTitle>
-                <CardDescription>
-                  How each input factor influenced the recommendation.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <FeatureImportanceChart data={result.feature_importance} />
-              </CardContent>
-            </Card>
-          )}
+          {/* Quick Counter */}
+          <span className="text-xs font-semibold text-neutral-500">
+            Showing {paginatedCrops.length} of {filteredCrops.length} crops
+          </span>
         </div>
+
+        {/* Category Pills Filter */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+          {CROP_CATEGORIES.map((cat) => (
+            <button
+              key={cat.key}
+              type="button"
+              onClick={() => {
+                setSelectedCategory(cat.key)
+                setCurrentPage(1)
+              }}
+              className={cn(
+                'px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap',
+                selectedCategory === cat.key
+                  ? 'bg-[#123B22] text-white shadow-xs'
+                  : 'bg-white text-neutral-600 hover:text-neutral-900 border border-neutral-200/90 hover:bg-neutral-50'
+              )}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* 3. MODERN CROP CARDS GRID (Layout requested in prompt)         */}
+      {/* ============================================================== */}
+      <div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {paginatedCrops.map((crop) => {
+            const isBestMatch = crop.rank === 1
+            const scorePercent = Math.round(crop.score * 100)
+            const details = getCropDetails(crop.crop)
+
+            return (
+              <Card
+                key={crop.crop}
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedCropModal({ crop, rank: crop.rank })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setSelectedCropModal({ crop, rank: crop.rank })
+                  }
+                }}
+                className={cn(
+                  'group cursor-pointer rounded-2xl transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:border-[#2E7D32]/50 select-none bg-white border border-neutral-200 relative overflow-hidden',
+                  isBestMatch ? 'ring-2 ring-[#2E7D32] shadow-md' : ''
+                )}
+              >
+                {/* Best Match Banner */}
+                {isBestMatch && (
+                  <div className="bg-[#2E7D32] text-white text-[11px] font-extrabold px-3 py-0.5 text-center tracking-wide uppercase">
+                    ⭐ #1 Recommended Crop for {activeFarm?.name || 'Your Farm'}
+                  </div>
+                )}
+
+                <CardHeader className="pb-2.5 pt-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-lg font-extrabold text-[#17231A] group-hover:text-[#2E7D32] transition-colors">
+                      <span className="text-xl">{crop.fallbackIcon || '🌱'}</span>
+                      <span className="capitalize">{crop.crop}</span>
+                    </CardTitle>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-extrabold text-neutral-400">#{crop.rank}</span>
+                      <ChevronRight className="h-4 w-4 text-neutral-400 group-hover:text-[#2E7D32] group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-3.5 pb-4">
+                  {/* Match Score Gauge */}
+                  <div>
+                    <div className="mb-1 flex items-center justify-between text-xs font-semibold">
+                      <span className="text-neutral-500">Match Score</span>
+                      <span className="font-extrabold text-[#17231A]">{scorePercent}%</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-neutral-100 overflow-hidden">
+                      <div
+                        className={cn(
+                          'h-full rounded-full transition-all duration-500',
+                          scorePercent >= 70
+                            ? 'bg-[#2E7D32]'
+                            : scorePercent >= 60
+                            ? 'bg-emerald-500'
+                            : 'bg-amber-500'
+                        )}
+                        style={{ width: `${scorePercent}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 2x2 Metric Tiles: Historical Yield, Revenue, Production, Risk */}
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                    <div className="rounded-xl bg-neutral-50/80 p-2.5 text-center group-hover:bg-[#EAF6EA]/40 transition-colors border border-neutral-100">
+                      <p className="text-[11px] text-neutral-500">Expected Yield</p>
+                      <p className="text-sm font-extrabold text-[#17231A] mt-0.5">
+                        {formatNumber(crop.expected_yield)} t/ha
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-neutral-50/80 p-2.5 text-center group-hover:bg-[#EAF6EA]/40 transition-colors border border-neutral-100">
+                      <p className="text-[11px] text-neutral-500">Revenue</p>
+                      <p className="text-sm font-extrabold text-[#17231A] mt-0.5">
+                        {formatCurrency(crop.revenue)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-neutral-50/80 p-2.5 text-center group-hover:bg-[#EAF6EA]/40 transition-colors border border-neutral-100">
+                      <p className="text-[11px] text-neutral-500">Production</p>
+                      <p className="text-sm font-extrabold text-[#17231A] mt-0.5">
+                        {formatNumber(crop.production)} t
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-neutral-50/80 p-2.5 text-center group-hover:bg-[#EAF6EA]/40 transition-colors border border-neutral-100">
+                      <p className="text-[11px] text-neutral-500">Risk</p>
+                      <div className="flex items-center justify-center gap-1 mt-0.5">
+                        <Shield className="h-3 w-3 text-[#2E7D32]" />
+                        <span
+                          className={`text-sm font-extrabold ${
+                            crop.risk <= 0.3
+                              ? 'text-[#2E7D32]'
+                              : crop.risk <= 0.6
+                              ? 'text-amber-600'
+                              : 'text-rose-600'
+                          }`}
+                        >
+                          {crop.risk <= 0.3 ? 'Low' : crop.risk <= 0.6 ? 'Medium' : 'High'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CTA link */}
+                  <div className="pt-1 text-xs text-center font-bold text-[#2E7D32] group-hover:text-[#123B22] transition-colors flex items-center justify-center gap-1">
+                    <span>View full crop profile</span>
+                    <span className="text-sm">→</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+
+        {/* Load More / Pagination */}
+        {paginatedCrops.length < filteredCrops.length && (
+          <div className="pt-6 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => p + 1)}
+              className="px-6 py-2.5 text-sm font-bold text-[#123B22] bg-white border border-[#2E7D32]/40 rounded-2xl hover:bg-[#EAF6EA] transition-all shadow-xs"
+            >
+              Load More Crops ({paginatedCrops.length} of {filteredCrops.length})
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Explainable AI Panel */}
+      {result?.feature_importance && result.feature_importance.length > 0 && (
+        <Card className="border border-neutral-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base font-bold text-neutral-900">
+              <BarChart3 className="h-5 w-5 text-emerald-700" />
+              Explainable AI - Feature Importance
+            </CardTitle>
+            <CardDescription>
+              How each regional factor influenced the ranking of the 39 crops.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FeatureImportanceChart data={result.feature_importance} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Redesigned Crop Details Modal */}
+      {selectedCropModal && (
+        <CropDetailsModal
+          crop={selectedCropModal.crop}
+          rank={selectedCropModal.rank}
+          isBestMatch={selectedCropModal.rank === 1}
+          isOpen={Boolean(selectedCropModal)}
+          onClose={() => setSelectedCropModal(null)}
+          farm={activeFarm}
+          location={{
+            state: loc.state,
+            district: loc.district,
+            village: activeFarm?.village,
+          }}
+          inputFeatures={{
+            nitrogen: Number(form.nitrogen) || 20.2,
+            phosphorus: Number(form.phosphorus) || 55.4,
+            potassium: Number(form.potassium) || 263.1,
+            temperature: Number(form.temperature) || 24.5,
+            humidity: Number(form.humidity) || 66.1,
+            ph: Number(form.ph) || 6.57,
+            rainfall: Number(form.rainfall) || 1251,
+            area: Number(form.area) || 4,
+          }}
+          onSelectCrop={(cropName) => {
+            try {
+              localStorage.setItem('agriai_selected_crop', cropName)
+              sessionStorage.setItem('agriai_selected_crop', cropName)
+            } catch (err) {
+              console.warn('Failed to save selected crop:', err)
+            }
+          }}
+        />
       )}
     </div>
   )

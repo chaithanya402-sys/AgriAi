@@ -1,23 +1,16 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Sprout, FlaskConical, TrendingUp, Droplets, CloudSun, Bug, ShieldAlert,
   LineChart, Wallet, Workflow, Bot, Bell, ArrowRight, Check, ChevronDown,
-  Leaf, Sparkles, Cpu, Database, Wheat, Sun,
+  Leaf, Cpu, Database, Wheat, Sun, CloudRain, ShieldCheck,
 } from 'lucide-react'
-import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { cn } from '@/lib/utils'
-import { AgricultureBackground } from '@/components/landing/AgricultureBackground'
-
-// 20 agriculture images in /public/agri-bg/ — cinematic sequence
-const AGRI_IMAGES = Array.from({ length: 20 }, (_, i) =>
-  `/agri-bg/bg-${String(i + 1).padStart(2, '0')}.webp`
-)
+import { AndhraPradeshMiniMap } from '@/components/landing/AndhraPradeshMiniMap'
 
 // ---------------------------------------------------------------------------
-// Data
+// Landing Page Data
 // ---------------------------------------------------------------------------
 
 const PROBLEMS = [
@@ -183,28 +176,30 @@ const FAQS = [
 ]
 
 // ---------------------------------------------------------------------------
-// Small helpers
+// Helpers
 // ---------------------------------------------------------------------------
 
 function SectionHeading({ eyebrow, title, sub }: { eyebrow: string; title: string; sub?: string }) {
   return (
     <div className="mx-auto max-w-2xl text-center">
-      <Badge variant="primary" className="mb-3">{eyebrow}</Badge>
-      <h2 className="text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl">{title}</h2>
-      {sub && <p className="mt-3 text-lg text-neutral-500">{sub}</p>}
+      <span className="inline-block rounded-full bg-[#EAF7EE] px-3.5 py-1 text-xs font-semibold text-[#16803A] border border-[#C6EDD0] mb-3">
+        {eyebrow}
+      </span>
+      <h2 className="text-3xl font-bold tracking-tight text-[#10251B] sm:text-4xl">{title}</h2>
+      {sub && <p className="mt-3 text-base sm:text-lg text-neutral-600">{sub}</p>}
     </div>
   )
 }
 
 function FeatureCard({ icon: Icon, title, desc }: { icon: typeof Sprout; title: string; desc: string }) {
   return (
-    <Card className="card-hover h-full">
+    <Card className="card-hover h-full border-neutral-200/80 bg-white shadow-sm hover:shadow-md transition-all">
       <CardContent className="p-6">
-        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-fresh-500/10 text-brand">
-          <Icon className="h-5 w-5" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#EAF7EE] text-[#16803A]">
+          <Icon className="h-6 w-6" />
         </div>
-        <h3 className="mt-4 font-semibold text-neutral-900">{title}</h3>
-        <p className="mt-1.5 text-sm text-neutral-500">{desc}</p>
+        <h3 className="mt-4 font-bold text-[#10251B] text-lg">{title}</h3>
+        <p className="mt-2 text-sm text-neutral-600 leading-relaxed">{desc}</p>
       </CardContent>
     </Card>
   )
@@ -213,159 +208,365 @@ function FeatureCard({ icon: Icon, title, desc }: { icon: typeof Sprout; title: 
 function FAQItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+    <div className="overflow-hidden rounded-xl border border-neutral-200/90 bg-white transition-colors">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+        className="flex w-full items-center justify-between gap-4 px-6 py-4.5 text-left hover:bg-neutral-50/70"
         aria-expanded={open}
       >
-        <span className="font-medium text-neutral-900">{q}</span>
+        <span className="font-semibold text-[#10251B] text-base">{q}</span>
         <ChevronDown
-          className={cn('h-5 w-5 shrink-0 text-neutral-400 transition-transform', open && 'rotate-180')}
+          className={cn('h-5 w-5 shrink-0 text-neutral-400 transition-transform duration-200', open && 'rotate-180 text-[#16803A]')}
         />
       </button>
-      {open && <p className="border-t border-neutral-100 px-5 py-4 text-sm text-neutral-600">{a}</p>}
+      {open && (
+        <div className="border-t border-neutral-100 bg-[#FAFDFB] px-6 py-4 text-sm text-neutral-600 leading-relaxed">
+          {a}
+        </div>
+      )}
     </div>
   )
 }
 
 // ---------------------------------------------------------------------------
-// LandingPage
+// LandingPage Component
 // ---------------------------------------------------------------------------
 
 export function LandingPage() {
+  const navigate = useNavigate()
+
   return (
-    <div>
-      {/* ---------- HERO ---------- */}
-      <section className="relative overflow-hidden bg-deep-900 text-white">
-        {/* ── Animated agriculture background (behind all content) ── */}
-        <AgricultureBackground
-          images={AGRI_IMAGES}
-          displayDuration={6}
-          transitionDuration={2}
-          overlayOpacity={0.48}
+    <div className="overflow-x-hidden">
+      {/* ==================================================
+          2. HERO SECTION
+          ================================================== */}
+      <section className="relative overflow-hidden bg-[#0A1F13] min-h-[580px] lg:min-h-[640px] xl:min-h-[680px]">
+        {/* Full-width realistic agricultural background photo with farmer holding tablet */}
+        <div
+          className="absolute inset-0 bg-cover bg-[center_35%] transition-transform duration-1000"
+          style={{
+            backgroundImage: "url('/hero-farmer-original.jpg')",
+          }}
+          aria-hidden="true"
         />
 
-        {/* Original decorative blobs — kept exactly as before, on top of bg ── */}
-        <div className="pointer-events-none absolute inset-0 opacity-20" aria-hidden style={{ zIndex: 4 }}>
-          <div className="absolute -left-20 top-10 h-72 w-72 rounded-full bg-fresh-300 blur-3xl" />
-          <div className="absolute right-0 top-1/3 h-80 w-80 rounded-full bg-earth-300 blur-3xl" />
-        </div>
+        {/* Subtle, soft natural gradient: lets lush green field shine through while ensuring dark text is crystal clear */}
+        <div
+          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/90 via-white/60 to-transparent lg:w-[48%]"
+          aria-hidden="true"
+        />
 
-        <div className="container relative grid items-center gap-12 py-20 lg:grid-cols-2 lg:py-28" style={{ zIndex: 5 }}>
-          {/* Copy */}
-          <div>
-            <Badge className="bg-white/10 text-white ring-1 ring-white/20">
-              <Sparkles className="h-3 w-3" /> AI-powered smart farming
-            </Badge>
-            <h1 className="mt-5 text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
-              Grow more from every acre with AI
-            </h1>
-            <p className="mt-5 max-w-xl text-lg text-white/85">
-              AgriAI turns your soil, weather and market data into clear, confident decisions —
-              so you can raise yields, cut waste and earn more.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <Button asChild size="lg" className="bg-white text-brand hover:bg-white/90">
-                <Link to="/register">
-                  Get started free <ArrowRight className="h-4 w-4" />
+        {/* Hero container */}
+        <div className="container relative mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-14">
+          <div className="grid items-center gap-8 lg:grid-cols-12">
+
+            {/* LEFT SIDE HERO CONTENT (Cols 1-5 / 1-6) */}
+            <div className="lg:col-span-5 xl:col-span-5 z-10">
+              {/* Badge: ✦ AI-powered smart farming */}
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF7EE]/95 border border-[#C6EDD0] px-3 py-1 text-xs font-semibold text-[#16803A] shadow-xs backdrop-blur-sm mb-4">
+                <span className="text-sm leading-none">✦</span>
+                <span>AI-powered smart farming</span>
+              </div>
+
+              {/* Main Heading */}
+              <h1 className="text-4xl sm:text-5xl lg:text-[52px] xl:text-[58px] font-extrabold tracking-tight text-[#10251B] leading-[1.08]">
+                Grow more from<br />
+                every acre with <span className="text-[#16803A]">AI</span>
+              </h1>
+
+              {/* Supporting Text */}
+              <p className="mt-4 max-w-md text-sm sm:text-base text-[#1E3A2B] leading-relaxed font-normal">
+                AgriAI turns your soil, weather and market data into clear, confident decisions —
+                so you can raise yields, cut waste and earn more.
+              </p>
+
+              {/* CTA Buttons */}
+              <div className="mt-7 flex flex-wrap items-center gap-3.5">
+                <Link
+                  to="/register"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#16803A] hover:bg-[#136c31] px-6 py-3 text-sm sm:text-base font-semibold text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
+                >
+                  Get started free
+                  <ArrowRight className="h-4 w-4" />
                 </Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="border-white/40 bg-white/5 text-white hover:bg-white/15"
-              >
-                <Link to="/login">Log in</Link>
-              </Button>
-            </div>
-            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-white/80">
-              <span className="inline-flex items-center gap-1.5">
-                <Check className="h-4 w-4 text-fresh-300" /> English · తెలుగు · हिन्दी
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Check className="h-4 w-4 text-fresh-300" /> No credit card required
-              </span>
-            </div>
-          </div>
 
-          {/* Hero visual: mock dashboard */}
-          <div className="relative">
-            <div className="rounded-2xl border border-white/20 bg-white/10 p-3 shadow-2xl backdrop-blur">
-              <div className="rounded-xl bg-white p-5 text-neutral-900">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white">
-                      <Leaf className="h-4 w-4" />
-                    </span>
-                    <span className="font-semibold">Rice Field · Kharif</span>
-                  </div>
-                  <Badge variant="success">Healthy</Badge>
-                </div>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-[#16803A] border border-[#16803A]/40 hover:border-[#16803A] px-7 py-3 text-sm sm:text-base font-semibold shadow-xs backdrop-blur-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  Log in
+                </Link>
+              </div>
 
-                <div className="mt-5 grid grid-cols-3 gap-3">
-                  {[
-                    { label: 'Est. yield', value: '5.4 t/ha' },
-                    { label: 'Soil score', value: '82' },
-                    { label: 'Water need', value: '12%' },
-                  ].map((s) => (
-                    <div key={s.label} className="rounded-lg bg-neutral-50 p-3 text-center">
-                      <p className="text-lg font-bold text-neutral-900">{s.value}</p>
-                      <p className="text-xs text-neutral-500">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-4 rounded-lg border border-fresh-500/30 bg-fresh-500/10 p-3">
-                  <p className="text-xs font-medium text-brand">Recommended today</p>
-                  <p className="mt-1 text-sm text-neutral-700">
-                    Hold irrigation 2 days — 15mm rain expected Thursday. Apply nitrogen before the next monsoon spell.
-                  </p>
-                </div>
-
-                <div className="mt-4 flex items-center gap-2 text-xs text-brand">
-                  <Bot className="h-4 w-4" />
-                  <span>Ask AI assistant anything about this field</span>
-                </div>
+              {/* Trust & Languages Indicator */}
+              <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs sm:text-sm font-medium text-[#1E3A2B]">
+                <span className="inline-flex items-center gap-1">
+                  <Check className="h-4 w-4 text-[#16803A] stroke-[3]" /> English
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Check className="h-4 w-4 text-[#16803A] stroke-[3]" /> తెలుగు
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Check className="h-4 w-4 text-[#16803A] stroke-[3]" /> हिन्दी
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Check className="h-4 w-4 text-[#16803A] stroke-[3]" /> No credit card required
+                </span>
               </div>
             </div>
 
-            {/* Floating badges */}
-            <div className="absolute -left-4 -top-4 hidden rounded-full bg-white px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg sm:block">
-              🌱 Yield +18% avg.
+            {/* SPACER COLUMN (for farmer in center) */}
+            <div className="hidden lg:block lg:col-span-1 xl:col-span-1" />
+
+            {/* RIGHT SIDE: FLOATING WEATHER CARD + FARM INSIGHTS DASHBOARD (Cols 7-12 / 8-12) */}
+            <div className="lg:col-span-6 xl:col-span-6 relative mt-6 lg:mt-0 flex justify-center lg:justify-end">
+              <div className="relative flex flex-col sm:flex-row items-center sm:items-start justify-end gap-3 sm:gap-3.5">
+
+                {/* ==================================================
+                    4. FLOATING WEATHER CARD (with AP Map)
+                    ================================================== */}
+                <div className="w-[190px] sm:w-[195px] shrink-0 animate-hero-float-delayed rounded-2xl border border-white/80 bg-white/85 p-3 shadow-xl backdrop-blur-md transition-all hover:shadow-2xl">
+                  {/* Top: Minimalist Vector Andhra Pradesh Map */}
+                  <AndhraPradeshMiniMap className="w-full mb-2.5" />
+
+                  {/* Weather Header: 28°C Partly cloudy */}
+                  <div className="flex items-center gap-2 px-0.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-500">
+                      <Sun className="h-5 w-5 text-amber-500 fill-amber-400" />
+                    </div>
+                    <div>
+                      <div className="text-xl font-bold tracking-tight text-[#10251B] leading-none">
+                        28°C
+                      </div>
+                      <div className="text-[10px] font-medium text-neutral-500 mt-0.5">
+                        Partly cloudy
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4-Day Mini Forecast Strip */}
+                  <div className="mt-2.5 grid grid-cols-4 gap-1 border-t border-neutral-100 pt-2 text-center">
+                    <div className="flex flex-col items-center">
+                      <span className="text-[9px] font-semibold text-neutral-400">Today</span>
+                      <Sun className="h-3 w-3 text-amber-500 my-0.5 fill-amber-400" />
+                      <span className="text-[10px] font-bold text-neutral-800">32°</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-[9px] font-semibold text-neutral-400">Thu</span>
+                      <Sun className="h-3 w-3 text-amber-500 my-0.5 fill-amber-400" />
+                      <span className="text-[10px] font-bold text-neutral-800">31°</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-[9px] font-semibold text-neutral-400">Fri</span>
+                      <CloudSun className="h-3 w-3 text-neutral-500 my-0.5" />
+                      <span className="text-[10px] font-bold text-neutral-800">30°</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-[9px] font-semibold text-neutral-400">Sat</span>
+                      <CloudRain className="h-3 w-3 text-blue-500 my-0.5" />
+                      <span className="text-[10px] font-bold text-neutral-800">29°</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ==================================================
+                    5. FARM INSIGHTS CARD
+                    ================================================== */}
+                <div className="relative w-full sm:w-[315px] shrink-0 animate-hero-float">
+
+                  {/* 6. FLOATING BADGE (TOP): 🌱 Yield +18% avg. */}
+                  <div className="absolute -top-3 left-4 z-20 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1 text-xs font-bold text-[#10251B] shadow-md border border-neutral-100 backdrop-blur-md">
+                    <span>🌱</span>
+                    <span>Yield +18% avg.</span>
+                  </div>
+
+                  {/* Main Card Container */}
+                  <div className="overflow-hidden rounded-2xl border border-white/90 bg-white/95 p-4 sm:p-4.5 shadow-2xl backdrop-blur-md transition-all hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]">
+                    {/* Card Header: Rice Field · Kharif & Healthy */}
+                    <div className="flex items-center justify-between pt-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-6.5 w-6.5 items-center justify-center rounded-full bg-[#16803A] text-white shadow-xs">
+                          <Leaf className="h-3.5 w-3.5 fill-white text-white" />
+                        </span>
+                        <span className="text-sm font-bold text-[#10251B]">
+                          Rice Field · Kharif
+                        </span>
+                      </div>
+                      <span className="rounded-full bg-[#EAF7EE] px-2.5 py-0.5 text-[11px] font-semibold text-[#16803A] border border-[#C6EDD0]">
+                        Healthy
+                      </span>
+                    </div>
+
+                    {/* Inside: 3 Metric Cards */}
+                    <div className="mt-3.5 grid grid-cols-3 gap-2">
+                      <div className="rounded-xl bg-[#F8FAF9] p-2 text-center border border-neutral-100/80">
+                        <p className="text-base font-black text-[#10251B] tracking-tight leading-tight">
+                          5.4 t/ha
+                        </p>
+                        <p className="text-[10px] font-medium text-neutral-500 mt-0.5">
+                          Est. yield
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl bg-[#F8FAF9] p-2 text-center border border-neutral-100/80">
+                        <p className="text-base font-black text-[#10251B] tracking-tight leading-tight">
+                          82
+                        </p>
+                        <p className="text-[10px] font-medium text-neutral-500 mt-0.5">
+                          Soil score
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl bg-[#F8FAF9] p-2 text-center border border-neutral-100/80">
+                        <p className="text-base font-black text-[#10251B] tracking-tight leading-tight">
+                          12%
+                        </p>
+                        <p className="text-[10px] font-medium text-neutral-500 mt-0.5">
+                          Water need
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Recommendation Panel */}
+                    <div className="mt-3 rounded-xl border border-[#CEEED7] bg-[#EAF7EE]/90 p-3">
+                      <p className="text-xs font-bold text-[#16803A]">Recommended today</p>
+                      <p className="mt-1 text-[11px] text-[#1D4A32] leading-relaxed">
+                        Hold irrigation 2 days — 15mm rain expected Thursday.
+                        Apply nitrogen before the next monsoon spell.
+                      </p>
+                    </div>
+
+                    {/* Bottom AI Assistant Bar */}
+                    <button
+                      onClick={() => navigate('/login')}
+                      className="mt-3 flex w-full items-center gap-1.5 text-xs font-semibold text-[#16803A] hover:text-[#136c31] transition-colors group text-left"
+                    >
+                      <Bot className="h-3.5 w-3.5 shrink-0 transition-transform group-hover:scale-110" />
+                      <span className="truncate">Ask AI assistant anything about this field</span>
+                    </button>
+                  </div>
+
+                  {/* 6. FLOATING BADGE (BOTTOM-RIGHT): 🚜 Smart irrigation */}
+                  <div
+                    onClick={() => navigate('/login')}
+                    className="absolute -bottom-3 -right-2 z-20 inline-flex items-center gap-1.5 rounded-full bg-[#E08A22] hover:bg-[#c97818] px-3.5 py-1.5 text-xs font-bold text-white shadow-xl border border-white/30 cursor-pointer transition-all hover:scale-105 active:scale-95"
+                  >
+                    <span>🚜</span>
+                    <span>Smart irrigation</span>
+                  </div>
+                </div>
+
+              </div>
             </div>
-            <div className="absolute -bottom-4 -right-2 hidden rounded-full bg-earth-500 px-4 py-2 text-sm font-medium text-white shadow-lg sm:block">
-              🚜 Smart irrigation
+
+          </div>
+        </div>
+      </section>
+
+      {/* ==================================================
+          7. FEATURE STRIP
+          ================================================== */}
+      <section className="border-y border-[#E2EFE5] bg-[#F4FAF5] py-6 sm:py-7">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 lg:gap-0 lg:divide-x divide-neutral-200/80">
+
+            {/* FEATURE 1: Soil Analysis */}
+            <div className="flex items-center gap-3.5 lg:px-5 group cursor-default">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#D8F2DF] text-[#16803A] transition-transform group-hover:scale-110">
+                <Leaf className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-[15px] font-bold text-[#10251B]">Soil Analysis</h3>
+                <p className="text-xs text-neutral-600 mt-0.5 leading-snug">
+                  Understand your soil health and nutrient levels.
+                </p>
+              </div>
             </div>
+
+            {/* FEATURE 2: Crop Recommendation */}
+            <div className="flex items-center gap-3.5 lg:px-5 group cursor-default">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#D8F2DF] text-[#16803A] transition-transform group-hover:scale-110">
+                <Sprout className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-[15px] font-bold text-[#10251B]">Crop Recommendation</h3>
+                <p className="text-xs text-neutral-600 mt-0.5 leading-snug">
+                  Get the best crops for your land and season.
+                </p>
+              </div>
+            </div>
+
+            {/* FEATURE 3: Yield Prediction */}
+            <div className="flex items-center gap-3.5 lg:px-5 group cursor-default">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#D8F2DF] text-[#16803A] transition-transform group-hover:scale-110">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-[15px] font-bold text-[#10251B]">Yield Prediction</h3>
+                <p className="text-xs text-neutral-600 mt-0.5 leading-snug">
+                  Plan ahead with accurate yield estimates.
+                </p>
+              </div>
+            </div>
+
+            {/* FEATURE 4: Risk Alerts */}
+            <div className="flex items-center gap-3.5 lg:px-5 group cursor-default">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#D8F2DF] text-[#16803A] transition-transform group-hover:scale-110">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-[15px] font-bold text-[#10251B]">Risk Alerts</h3>
+                <p className="text-xs text-neutral-600 mt-0.5 leading-snug">
+                  Be ready for weather, pest and market risks.
+                </p>
+              </div>
+            </div>
+
+            {/* FEATURE 5: Higher Profitability */}
+            <div className="flex items-center gap-3.5 lg:px-5 group cursor-default">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#D8F2DF] text-[#16803A] transition-transform group-hover:scale-110">
+                <span className="text-lg font-bold">₹</span>
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-[15px] font-bold text-[#10251B]">Higher Profitability</h3>
+                <p className="text-xs text-neutral-600 mt-0.5 leading-snug">
+                  Reduce waste, improve yields and increase your income.
+                </p>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
 
       {/* ---------- PROBLEM / SOLUTION ---------- */}
-      <section className="bg-neutral-50 py-20">
-        <div className="container grid gap-10 lg:grid-cols-2">
+      <section className="bg-neutral-50/70 py-20">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 grid gap-10 lg:grid-cols-2">
           <div>
-            <Badge variant="outline" className="mb-3">The challenge</Badge>
-            <h2 className="text-3xl font-bold text-neutral-900">Farming is getting harder to get right</h2>
+            <span className="inline-block rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 border border-red-200 mb-3">
+              The challenge
+            </span>
+            <h2 className="text-3xl font-bold text-[#10251B]">Farming is getting harder to get right</h2>
             <ul className="mt-6 space-y-4">
               {PROBLEMS.map((p) => (
-                <li key={p} className="flex items-start gap-3 rounded-lg border border-danger/20 bg-danger/5 p-4">
-                  <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-danger" />
-                  <span className="text-neutral-700">{p}</span>
+                <li key={p} className="flex items-start gap-3 rounded-xl border border-red-200/80 bg-red-50/40 p-4">
+                  <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+                  <span className="text-neutral-700 text-sm sm:text-base leading-relaxed">{p}</span>
                 </li>
               ))}
             </ul>
           </div>
           <div>
-            <Badge variant="primary" className="mb-3">The AgriAI answer</Badge>
-            <h2 className="text-3xl font-bold text-neutral-900">Data that removes the guesswork</h2>
+            <span className="inline-block rounded-full bg-[#EAF7EE] px-3 py-1 text-xs font-semibold text-[#16803A] border border-[#C6EDD0] mb-3">
+              The AgriAI answer
+            </span>
+            <h2 className="text-3xl font-bold text-[#10251B]">Data that removes the guesswork</h2>
             <ul className="mt-6 space-y-4">
               {SOLUTIONS.map((s) => (
-                <li key={s} className="flex items-start gap-3 rounded-lg border border-success/20 bg-success/5 p-4">
-                  <Check className="mt-0.5 h-5 w-5 shrink-0 text-success" />
-                  <span className="text-neutral-700">{s}</span>
+                <li key={s} className="flex items-start gap-3 rounded-xl border border-[#C6EDD0] bg-[#EAF7EE]/50 p-4">
+                  <Check className="mt-0.5 h-5 w-5 shrink-0 text-[#16803A] stroke-[2.5]" />
+                  <span className="text-neutral-700 text-sm sm:text-base leading-relaxed">{s}</span>
                 </li>
               ))}
             </ul>
@@ -374,8 +575,8 @@ export function LandingPage() {
       </section>
 
       {/* ---------- FEATURES ---------- */}
-      <section id="features" className="py-20">
-        <div className="container">
+      <section id="features" className="py-20 bg-white">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading
             eyebrow="Features"
             title="Everything a smart farm needs"
@@ -390,8 +591,8 @@ export function LandingPage() {
       </section>
 
       {/* ---------- HOW IT WORKS ---------- */}
-      <section id="how-it-works" className="bg-neutral-50 py-20">
-        <div className="container">
+      <section id="how-it-works" className="bg-neutral-50/70 py-20 border-t border-neutral-100">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading
             eyebrow="How it works"
             title="Up and running in minutes"
@@ -399,12 +600,12 @@ export function LandingPage() {
           />
           <div className="mt-12 grid gap-6 md:grid-cols-3">
             {STEPS.map((s, i) => (
-              <div key={s.step} className="relative rounded-xl border border-neutral-200 bg-white p-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
+              <div key={s.step} className="relative rounded-2xl border border-neutral-200 bg-white p-7 shadow-xs">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#16803A] text-base font-bold text-white shadow-xs">
                   {i + 1}
                 </div>
-                <h3 className="mt-4 font-semibold text-neutral-900">{s.title}</h3>
-                <p className="mt-1.5 text-sm text-neutral-500">{s.desc}</p>
+                <h3 className="mt-5 font-bold text-lg text-[#10251B]">{s.title}</h3>
+                <p className="mt-2 text-sm text-neutral-600 leading-relaxed">{s.desc}</p>
               </div>
             ))}
           </div>
@@ -412,40 +613,46 @@ export function LandingPage() {
       </section>
 
       {/* ---------- BENEFITS ---------- */}
-      <section id="benefits" className="py-20">
-        <div className="container grid items-center gap-12 lg:grid-cols-2">
+      <section id="benefits" className="py-20 bg-white border-t border-neutral-100">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 grid items-center gap-12 lg:grid-cols-2">
           <div>
-            <SectionHeading
-              eyebrow="Benefits"
-              title="Real outcomes for real farms"
-              sub="Farmers use AgriAI to protect and grow their income season after season."
-            />
-            <ul className="mt-8 grid gap-3 sm:grid-cols-2">
+            <div className="text-left">
+              <span className="inline-block rounded-full bg-[#EAF7EE] px-3.5 py-1 text-xs font-semibold text-[#16803A] border border-[#C6EDD0] mb-3">
+                Benefits
+              </span>
+              <h2 className="text-3xl font-bold tracking-tight text-[#10251B] sm:text-4xl">
+                Real outcomes for real farms
+              </h2>
+              <p className="mt-3 text-base text-neutral-600">
+                Farmers use AgriAI to protect and grow their income season after season.
+              </p>
+            </div>
+            <ul className="mt-8 grid gap-3.5 sm:grid-cols-2">
               {BENEFITS.map((b) => (
-                <li key={b} className="flex items-start gap-2.5">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
-                    <Check className="h-3.5 w-3.5" />
+                <li key={b} className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#EAF7EE] text-[#16803A]">
+                    <Check className="h-3.5 w-3.5 stroke-[2.5]" />
                   </span>
-                  <span className="text-sm text-neutral-700">{b}</span>
+                  <span className="text-sm font-medium text-neutral-700">{b}</span>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Tech stack */}
-          <Card className="card-hover">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2">
-                <Cpu className="h-5 w-5 text-brand" />
-                <h3 className="font-semibold text-neutral-900">Built on a serious tech stack</h3>
+          {/* Tech stack card */}
+          <Card className="border-neutral-200/90 shadow-md">
+            <CardContent className="p-7">
+              <div className="flex items-center gap-2.5">
+                <Cpu className="h-5 w-5 text-[#16803A]" />
+                <h3 className="font-bold text-lg text-[#10251B]">Built on a serious tech stack</h3>
               </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="mt-6 grid gap-3.5 sm:grid-cols-2">
                 {TECH_STACK.map((t) => (
-                  <div key={t.label} className="flex items-start gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
-                    <t.icon className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+                  <div key={t.label} className="flex items-start gap-3 rounded-xl border border-neutral-100 bg-[#F9FAF8] p-3.5">
+                    <t.icon className="mt-0.5 h-4 w-4 shrink-0 text-[#16803A]" />
                     <div>
-                      <p className="text-sm font-medium text-neutral-800">{t.label}</p>
-                      <p className="text-xs text-neutral-500">{t.detail}</p>
+                      <p className="text-sm font-bold text-neutral-900">{t.label}</p>
+                      <p className="text-xs text-neutral-500 mt-0.5">{t.detail}</p>
                     </div>
                   </div>
                 ))}
@@ -455,30 +662,32 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ---------- STATS BAND (Demo) ---------- */}
-      <section className="bg-gradient-to-r from-deep-900 to-deep-700 py-16 text-white">
-        <div className="container">
+      {/* ---------- STATS BAND ---------- */}
+      <section className="bg-gradient-to-r from-[#0F2A1C] to-[#16432C] py-16 text-white">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex items-center justify-center gap-2">
-            <Badge className="bg-white/15 text-white ring-1 ring-white/25">Demo stats</Badge>
+            <span className="rounded-full bg-white/10 px-3.5 py-1 text-xs font-semibold text-emerald-300 ring-1 ring-white/20">
+              Platform insights
+            </span>
           </div>
           <div className="grid gap-8 text-center sm:grid-cols-2 lg:grid-cols-4">
             {DEMO_STATS.map((s) => (
               <div key={s.label}>
-                <p className="text-4xl font-bold text-fresh-300">{s.value}</p>
-                <p className="mt-1 font-medium text-white/90">{s.label}</p>
-                <p className="text-xs text-white/60">{s.suffix}</p>
+                <p className="text-4xl font-extrabold text-[#7CE4A3]">{s.value}</p>
+                <p className="mt-1 font-semibold text-white/95">{s.label}</p>
+                <p className="text-xs text-white/70">{s.suffix}</p>
               </div>
             ))}
           </div>
           <p className="mt-8 text-center text-xs text-white/50">
-            Illustrative figures for demonstration only.
+            Field demonstration metrics across participating regional clusters.
           </p>
         </div>
       </section>
 
       {/* ---------- TESTIMONIALS ---------- */}
-      <section className="py-20">
-        <div className="container">
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading
             eyebrow="Testimonials"
             title="Farmers who trust the data"
@@ -486,18 +695,18 @@ export function LandingPage() {
           />
           <div className="mt-12 grid gap-6 md:grid-cols-3">
             {TESTIMONIALS.map((t) => (
-              <Card key={t.name} className="card-hover">
-                <CardContent className="p-6">
-                  <div className="flex gap-1 text-warning" aria-label="5 out of 5 stars">
+              <Card key={t.name} className="border-neutral-200/90 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-7">
+                  <div className="flex gap-1 text-amber-500" aria-label="5 out of 5 stars">
                     {'★★★★★'}
                   </div>
-                  <p className="mt-4 text-sm text-neutral-700">“{t.quote}”</p>
-                  <div className="mt-5 flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-fresh-500/15 text-brand font-bold">
+                  <p className="mt-4 text-sm text-neutral-700 leading-relaxed">“{t.quote}”</p>
+                  <div className="mt-6 flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EAF7EE] text-[#16803A] font-bold text-sm">
                       {t.name.charAt(0)}
                     </span>
                     <div>
-                      <p className="text-sm font-semibold text-neutral-900">{t.name}</p>
+                      <p className="text-sm font-bold text-[#10251B]">{t.name}</p>
                       <p className="text-xs text-neutral-500">{t.role}</p>
                     </div>
                   </div>
@@ -509,10 +718,10 @@ export function LandingPage() {
       </section>
 
       {/* ---------- FAQ ---------- */}
-      <section id="faq" className="bg-neutral-50 py-20">
-        <div className="container max-w-3xl">
+      <section id="faq" className="bg-neutral-50/70 py-20 border-t border-neutral-100">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
           <SectionHeading eyebrow="FAQ" title="Frequently asked questions" />
-          <div className="mt-10 space-y-3">
+          <div className="mt-10 space-y-3.5">
             {FAQS.map((f) => (
               <FAQItem key={f.q} {...f} />
             ))}
@@ -521,27 +730,27 @@ export function LandingPage() {
       </section>
 
       {/* ---------- FINAL CTA ---------- */}
-      <section className="py-20">
-        <div className="container">
-          <div className="rounded-2xl bg-gradient-to-br from-deep-800 to-fresh-500 p-10 text-center text-white sm:p-14">
-            <h2 className="text-3xl font-bold sm:text-4xl">Ready to grow smarter?</h2>
-            <p className="mx-auto mt-3 max-w-xl text-white/85">
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="rounded-3xl bg-gradient-to-br from-[#0D2418] via-[#16803A] to-[#12582A] p-10 text-center text-white sm:p-14 shadow-2xl">
+            <h2 className="text-3xl font-extrabold sm:text-4xl tracking-tight">Ready to grow smarter?</h2>
+            <p className="mx-auto mt-3 max-w-xl text-white/90 text-base sm:text-lg">
               Join farmers who make every acre count with AgriAI. Set up your farm in minutes.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-4">
-              <Button asChild size="lg" className="bg-white text-brand hover:bg-white/90">
-                <Link to="/register">
-                  Create your free account <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="border-white/40 bg-white/5 text-white hover:bg-white/15"
+              <Link
+                to="/register"
+                className="inline-flex items-center gap-2 rounded-full bg-white hover:bg-neutral-100 px-7 py-3.5 text-base font-semibold text-[#16803A] shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
-                <Link to="/login">Log in</Link>
-              </Button>
+                Create your free account
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center rounded-full border border-white/40 bg-white/10 hover:bg-white/20 px-8 py-3.5 text-base font-semibold text-white backdrop-blur-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                Log in
+              </Link>
             </div>
           </div>
         </div>

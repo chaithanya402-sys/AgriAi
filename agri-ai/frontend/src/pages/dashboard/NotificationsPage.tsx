@@ -51,8 +51,9 @@ function severityVariant(severity: string): 'info' | 'warning' | 'danger' {
 
 function severityLabel(severity: string): string {
   const s = severity.toLowerCase()
-  if (s === 'high' || s === 'critical') return 'High'
-  if (s === 'medium') return 'Medium'
+  if (s === 'high' || s === 'critical' || s === 'danger') return 'High'
+  if (s === 'medium' || s === 'warning') return 'Warning'
+  if (s === 'info') return 'Info'
   return 'Low'
 }
 
