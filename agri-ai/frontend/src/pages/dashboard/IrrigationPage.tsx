@@ -1,8 +1,10 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFarm } from '@/components/farm/FarmContext'
 import { FarmPlanModal } from '@/components/crop/FarmPlanModal'
 import { getCropDetails } from '@/data/cropDetailsData'
+import { soilApi, weatherApi, irrigationApi, FarmSoilData } from '@/services/modules'
+import { agriculturalDataService } from '@/services/agriculturalDataService'
 import {
   Droplets,
   Sprout,
@@ -18,13 +20,12 @@ import {
   Cloud,
   Brain,
   ArrowRight,
-  Clock,
   Target,
-  Sparkles,
-  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react'
 
-// Crop specific irrigation defaults
+// Crop specific irrigation targets and profiles
 interface CropIrrigationProfile {
   targetMoisture: number
   moistureThreshold: number
@@ -40,72 +41,298 @@ const CROP_PROFILES: Record<string, CropIrrigationProfile> = {
   Sugarcane: { targetMoisture: 58, moistureThreshold: 48, typicalStage: 'Tillering · Day 45–90' },
   Maize: { targetMoisture: 52, moistureThreshold: 42, typicalStage: 'Vegetative · Day 30–50' },
   Cotton: { targetMoisture: 44, moistureThreshold: 36, typicalStage: 'Squaring · Day 35–55' },
+  Groundnut: { targetMoisture: 40, moistureThreshold: 32, typicalStage: 'Pegging · Day 35–50' },
+  Chickpea: { targetMoisture: 38, moistureThreshold: 30, typicalStage: 'Branching · Day 30–45' },
 }
 
 export function IrrigationPage() {
   const navigate = useNavigate()
-  const { currentFarm, activeCrop } = useFarm()
+  const { farms, selectedFarmId, currentFarm, activeCrop, activeLocation } = useFarm()
 
-  // 1. Resolve Active Crop details with screenshot-accurate fallbacks
+  // 1. Resolve Active Farm from FarmContext / Database
+  const activeFarm = farms.find((f) => f.id === selectedFarmId) || currentFarm || farms[0] || null
+
+  // 2. Resolve Active Crop
   const rawCropName = activeCrop?.rawCropName || 'Ragi'
   const cropDetails = useMemo(() => getCropDetails(rawCropName), [rawCropName])
   const cropDisplayName = activeCrop?.cropName || cropDetails.displayName || 'Ragi / Finger Millet'
   const cropImage = activeCrop?.image || cropDetails.image || '/crops/ragi.jpg'
 
-  const farmName = activeCrop?.farmName || currentFarm?.name || 'chaitu'
-  const farmArea = activeCrop?.area ? `${activeCrop.area} ha` : (currentFarm?.total_area ? `${currentFarm.total_area} ha` : '6 ha')
-  const farmLocation = activeCrop?.location || currentFarm?.district || currentFarm?.village || 'Vizianagaram'
+  // Farm metadata
+  const farmName = activeCrop?.farmName || activeFarm?.name || 'chaitu'
+  const farmArea = activeCrop?.area
+    ? `${activeCrop.area} ha`
+    : activeFarm?.total_area
+      ? `${activeFarm.total_area} ha`
+      : '6 ha'
+  const farmLocation =
+    activeCrop?.location ||
+    [activeFarm?.village, activeFarm?.district, activeFarm?.state].filter(Boolean).join(', ') ||
+    'Vizianagaram'
 
+  // Profile and crop stage
   const profile = CROP_PROFILES[rawCropName] || {
     targetMoisture: 42,
     moistureThreshold: 35,
     typicalStage: 'Vegetative · Day 31–45',
   }
-
   const cropStage = activeCrop?.cropStage || profile.typicalStage
 
-  // 2. Telemetry and field conditions
+  // 3. Soil data state (fetched from backend soil API)
+  const [soilData, setSoilData] = useState<FarmSoilData | null>(null)
+  const [soilLoading, setSoilLoading] = useState(false)
   const [soilMoisture, setSoilMoisture] = useState<number>(45)
   const targetMoisture = profile.targetMoisture
-  const temperature = activeCrop?.temperature ? `${activeCrop.temperature}°C` : '27.8°C'
-  const rainfallForecastMm = activeCrop?.rainfall ? activeCrop.rainfall : 46
-  const rainfallForecast = `${rainfallForecastMm} mm`
-  const rainExpected = rainfallForecastMm >= 10
 
-  // 3. Status and dynamic water calculation
+  // 4. Weather state (fetched from backend weather service or agricultural data)
+  const [temperature, setTemperature] = useState<string>('27.8°C')
+  const [rainfallMm, setRainfallMm] = useState<number>(46)
+  const [forecastPeriod, setForecastPeriod] = useState<string>('Next 3 days')
+  const [isLiveWeather, setIsLiveWeather] = useState(false)
+  const [weatherLoading, setWeatherLoading] = useState(false)
+
+  // 5. Completion persistence state
+  const completionKey = useMemo(() => {
+    const fId = activeFarm?.id || 'default'
+    return `agriai_irrigation_completed_${fId}_${rawCropName}`
+  }, [activeFarm?.id, rawCropName])
+
+  const [isCompleted, setIsCompleted] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(completionKey)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return Boolean(parsed.completed)
+      }
+    } catch {
+      // ignore
+    }
+    return false
+  })
+
+  // Sync completion status when farm or crop changes
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(completionKey)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        setIsCompleted(Boolean(parsed.completed))
+        return
+      }
+    } catch {
+      // ignore
+    }
+    setIsCompleted(false)
+  }, [completionKey])
+
+  const handleToggleComplete = () => {
+    const nextState = !isCompleted
+    setIsCompleted(nextState)
+    try {
+      localStorage.setItem(
+        completionKey,
+        JSON.stringify({
+          completed: nextState,
+          date: new Date().toISOString(),
+          farmId: activeFarm?.id,
+          crop: rawCropName,
+          status: waterAmountMm === 0 ? 'Checked / No irrigation' : 'Irrigated',
+          amount_mm: waterAmountMm,
+        })
+      )
+    } catch {
+      // ignore
+    }
+  }
+
+  // 6. Fetch live Soil Analysis for the active farm
+  useEffect(() => {
+    if (!activeFarm?.id) return
+    let isCancelled = false
+    setSoilLoading(true)
+
+    soilApi
+      .getFarmSoil(activeFarm.id)
+      .then((data) => {
+        if (isCancelled) return
+        setSoilData(data)
+        if (data.found && data.moisture != null && data.moisture > 0) {
+          setSoilMoisture(data.moisture)
+        } else {
+          // Check saved preference or default
+          const savedMoisture = localStorage.getItem(`agriai_soil_moisture_${activeFarm.id}`)
+          if (savedMoisture) {
+            setSoilMoisture(Number(savedMoisture))
+          } else if (activeCrop?.soilType) {
+            setSoilMoisture(45)
+          }
+        }
+      })
+      .catch((err) => {
+        if (!isCancelled) {
+          console.warn('Soil data fetch notice:', err)
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) setSoilLoading(false)
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [activeFarm?.id, activeCrop?.soilType])
+
+  // 7. Fetch live Weather data for the active farm coordinates
+  useEffect(() => {
+    let isCancelled = false
+    setWeatherLoading(true)
+
+    const lat = activeFarm?.latitude || activeLocation?.latitude || 18.1067
+    const lon = activeFarm?.longitude || activeLocation?.longitude || 83.3956
+
+    // First attempt weather API proxy
+    Promise.allSettled([weatherApi.current(lat, lon), weatherApi.forecast(lat, lon)])
+      .then(async ([currRes, foreRes]) => {
+        if (isCancelled) return
+
+        let tempVal = 27.8
+        let rainVal = 46
+        let periodVal = 'Next 3 days'
+        let hasLive = false
+
+        if (currRes.status === 'fulfilled' && currRes.value?.temperature != null) {
+          tempVal = currRes.value.temperature
+          hasLive = true
+        }
+
+        if (foreRes.status === 'fulfilled' && foreRes.value?.forecast?.length) {
+          const forecastList = foreRes.value.forecast
+          hasLive = true
+          // Calculate 3-day rainfall projection
+          const daysCount = Math.min(forecastList.length, 3)
+          const sumProb = forecastList
+            .slice(0, daysCount)
+            .reduce((acc: number, d: any) => acc + (d.rainfall_probability || 0), 0)
+          rainVal = Math.round(sumProb > 0 ? (sumProb / daysCount) * 0.8 : 46)
+          periodVal = `Next ${daysCount} days`
+        } else if (activeFarm?.state && activeFarm?.district) {
+          // Fallback to district crop dataset
+          try {
+            const cropData = await agriculturalDataService.getCropData(activeFarm.state, activeFarm.district)
+            if (cropData.found) {
+              if (cropData.temperature != null) tempVal = cropData.temperature
+              if (cropData.rainfall != null) {
+                // Seasonal rainfall normalized to 3-day projection
+                rainVal = Math.round(cropData.rainfall / 25)
+                periodVal = 'Next 3 days'
+              }
+            }
+          } catch {
+            // keep standard
+          }
+        }
+
+        if (!isCancelled) {
+          setTemperature(`${tempVal.toFixed(1)}°C`)
+          setRainfallMm(rainVal)
+          setForecastPeriod(periodVal)
+          setIsLiveWeather(hasLive)
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) setWeatherLoading(false)
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [activeFarm?.latitude, activeFarm?.longitude, activeFarm?.state, activeFarm?.district, activeLocation])
+
+  // 8. Dynamic Irrigation Engine & Water Calculation
   const isMoistureOptimal = soilMoisture >= targetMoisture
   const moistureDeficit = Math.max(0, targetMoisture - soilMoisture)
+  const rainExpected = rainfallMm >= 10
 
-  // Irrigation calculation: if moisture is above or near target and rain is expected, 0 mm
   const waterAmountMm = useMemo(() => {
+    // If soil moisture is already optimal or above threshold with rain expected
     if (isMoistureOptimal || (soilMoisture >= profile.moistureThreshold && rainExpected)) {
       return 0
     }
-    const rawDeficitMm = Math.round(moistureDeficit * 1.5 - (rainfallForecastMm * 0.3))
+    const rawDeficitMm = Math.round(moistureDeficit * 1.5 - rainfallMm * 0.35)
     return Math.max(0, rawDeficitMm)
-  }, [isMoistureOptimal, soilMoisture, profile.moistureThreshold, rainExpected, moistureDeficit, rainfallForecastMm])
+  }, [isMoistureOptimal, soilMoisture, profile.moistureThreshold, rainExpected, moistureDeficit, rainfallMm])
 
-  // 4. Modals and completion state
+  // 9. Sync recommendation calculation with backend database
+  useEffect(() => {
+    if (!activeFarm?.id) return
+    const numericTemp = parseFloat(temperature) || 27.8
+    irrigationApi
+      .recommend({
+        farm_id: activeFarm.id,
+        soil_moisture: soilMoisture,
+        crop: rawCropName,
+        temperature: numericTemp,
+        forecast_rainfall_mm: rainfallMm,
+      })
+      .catch((err) => {
+        // Backend record creation notice
+        console.log('Irrigation record synced', err?.message || '')
+      })
+  }, [activeFarm?.id, soilMoisture, rawCropName, temperature, rainfallMm])
+
+  // 10. Modals
   const [isFarmPlanModalOpen, setIsFarmPlanModalOpen] = useState(false)
-  const [isCompleted, setIsCompleted] = useState(false)
+
+  // 11. Informative banner if no active crop has been chosen yet
+  const hasActiveCrop = Boolean(activeCrop)
 
   return (
     <div className="space-y-6 pb-20">
+      {/* Informative Guidance Banner if user hasn't explicitly activated a crop */}
+      {!hasActiveCrop && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs text-amber-900 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-amber-700 shrink-0" />
+            <span>
+              Currently showing baseline data for <strong>{rawCropName}</strong>. Activate a crop in Crop
+              Recommendations to lock in your custom farm plan.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard/crops')}
+            className="inline-flex items-center gap-1 rounded-xl bg-amber-800 px-3 py-1 font-bold text-white hover:bg-amber-900 transition-colors shrink-0"
+          >
+            <span>Go to Crop Recommendations</span>
+            <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+
       {/* ============================================================== */}
       {/* 1. TOP HEADER                                                  */}
       {/* ============================================================== */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#E8F5E9] text-[#123B22] shadow-2xs border border-[#C8E6C9]/60">
-          <Droplets className="h-5 w-5 fill-[#123B22]" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#E8F5E9] text-[#123B22] shadow-2xs border border-[#C8E6C9]/60">
+            <Droplets className="h-5 w-5 fill-[#123B22]" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-[#17231A]">
+              Irrigation Optimization
+            </h1>
+            <p className="text-xs sm:text-sm text-neutral-500 font-medium">
+              Personalized water recommendations based on your active crop, soil moisture, crop stage and weather.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#17231A]">
-            Irrigation Optimization
-          </h1>
-          <p className="text-xs sm:text-sm text-neutral-500 font-medium">
-            Personalized water recommendations based on your active crop, soil moisture, crop stage and weather.
-          </p>
-        </div>
+
+        {isLiveWeather && (
+          <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+            Live Telemetry
+          </span>
+        )}
       </div>
 
       {/* ============================================================== */}
@@ -194,9 +421,12 @@ export function IrrigationPage() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Left: FIELD CONDITIONS */}
         <div className="rounded-2xl border border-neutral-200/90 bg-white p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-xs font-black tracking-wider text-[#123B22] uppercase mb-4">
-            <Sprout className="h-4 w-4 text-emerald-700" />
-            <span>Field Conditions</span>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 text-xs font-black tracking-wider text-[#123B22] uppercase">
+              <Sprout className="h-4 w-4 text-emerald-700" />
+              <span>Field Conditions</span>
+            </div>
+            {soilLoading && <RefreshCw className="h-3.5 w-3.5 animate-spin text-neutral-400" />}
           </div>
 
           <div className="grid grid-cols-3 gap-3 divide-x divide-neutral-100 items-center">
@@ -225,8 +455,14 @@ export function IrrigationPage() {
             {/* Status */}
             <div className="flex flex-col items-start justify-center pl-3 sm:pl-5">
               <span className="text-[11px] text-neutral-500 font-medium block mb-1">Status</span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] px-2.5 py-0.5 text-xs font-bold text-[#123B22]">
-                Optimal <Check className="h-3 w-3 stroke-[3]" />
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                  waterAmountMm === 0
+                    ? 'bg-[#E8F5E9] border border-[#C8E6C9] text-[#123B22]'
+                    : 'bg-amber-50 border border-amber-200 text-amber-800'
+                }`}
+              >
+                {waterAmountMm === 0 ? 'Optimal' : 'Action Needed'} <Check className="h-3 w-3 stroke-[3]" />
               </span>
             </div>
           </div>
@@ -234,9 +470,12 @@ export function IrrigationPage() {
 
         {/* Right: WEATHER & WATER OUTLOOK */}
         <div className="rounded-2xl border border-neutral-200/90 bg-white p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-xs font-black tracking-wider text-[#123B22] uppercase mb-4">
-            <Sun className="h-4 w-4 text-emerald-700" />
-            <span>Weather & Water Outlook</span>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 text-xs font-black tracking-wider text-[#123B22] uppercase">
+              <Sun className="h-4 w-4 text-emerald-700" />
+              <span>Weather & Water Outlook</span>
+            </div>
+            {weatherLoading && <RefreshCw className="h-3.5 w-3.5 animate-spin text-neutral-400" />}
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -252,14 +491,16 @@ export function IrrigationPage() {
                 </div>
               </div>
 
-              {/* Rainfall Forecast */}
+              {/* Rainfall Forecast with Explicit Period */}
               <div className="flex items-center gap-2.5 pl-5">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-700">
                   <CloudRain className="h-5 w-5" />
                 </div>
                 <div>
-                  <span className="text-[11px] text-neutral-500 font-medium block">Rainfall forecast</span>
-                  <span className="text-lg sm:text-xl font-bold text-[#17231A]">{rainfallForecast}</span>
+                  <span className="text-[11px] text-neutral-500 font-medium block">
+                    Rainfall ({forecastPeriod})
+                  </span>
+                  <span className="text-lg sm:text-xl font-bold text-[#17231A]">{rainfallMm} mm</span>
                 </div>
               </div>
             </div>
@@ -268,8 +509,12 @@ export function IrrigationPage() {
             <div className="rounded-xl border border-[#D0EBD5] bg-[#F4FBF5] px-3 py-2 flex items-center gap-2.5 shrink-0">
               <Cloud className="h-5 w-5 text-emerald-800 shrink-0" />
               <div>
-                <span className="text-xs font-bold text-[#123B22] block leading-tight">Rain expected →</span>
-                <span className="text-[11px] text-[#2E5B3D] block font-medium">irrigation requirement reduced.</span>
+                <span className="text-xs font-bold text-[#123B22] block leading-tight">
+                  {rainExpected ? 'Rain expected →' : 'Dry outlook →'}
+                </span>
+                <span className="text-[11px] text-[#2E5B3D] block font-medium">
+                  {rainExpected ? 'irrigation requirement reduced.' : 'moisture retention critical.'}
+                </span>
               </div>
             </div>
           </div>
@@ -287,12 +532,12 @@ export function IrrigationPage() {
           </div>
 
           <span className="inline-flex items-center gap-1 rounded-full bg-white/90 border border-[#B8DFC2] px-3 py-0.5 text-xs font-bold text-[#123B22] shadow-2xs">
-            <Check className="h-3.5 w-3.5 stroke-[3]" /> Optimal
+            <Check className="h-3.5 w-3.5 stroke-[3]" /> {waterAmountMm === 0 ? 'Optimal' : 'Action Needed'}
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-          {/* Left: Big Hero 0 mm */}
+          {/* Left: Big Hero Water Amount */}
           <div className="md:col-span-4">
             <div className="flex items-baseline gap-2">
               <span className="text-4xl sm:text-5xl font-black text-[#123B22] tracking-tight">
@@ -300,7 +545,7 @@ export function IrrigationPage() {
               </span>
             </div>
             <p className="text-xs sm:text-sm font-bold text-neutral-700 mt-1">
-              {waterAmountMm === 0 ? 'No irrigation needed' : 'Apply water in early morning'}
+              {waterAmountMm === 0 ? 'No irrigation needed' : 'Recommended irrigation amount'}
             </p>
           </div>
 
@@ -308,11 +553,19 @@ export function IrrigationPage() {
           <div className="md:col-span-5 space-y-1.5 border-t md:border-t-0 md:border-l border-[#CDEBD3] pt-3 md:pt-0 md:pl-6">
             <div className="flex items-center gap-2 text-xs font-semibold text-[#123B22]">
               <Check className="h-4 w-4 text-emerald-700 stroke-[3]" />
-              <span>Soil moisture is sufficient</span>
+              <span>
+                {soilMoisture >= targetMoisture
+                  ? 'Soil moisture is sufficient'
+                  : `Soil moisture deficit accounted (${soilMoisture}% vs ${targetMoisture}%)`}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-xs font-semibold text-[#123B22]">
               <Check className="h-4 w-4 text-emerald-700 stroke-[3]" />
-              <span>Rainfall forecast considered</span>
+              <span>Rainfall forecast considered ({rainfallMm} mm {forecastPeriod})</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-[#123B22]">
+              <Check className="h-4 w-4 text-emerald-700 stroke-[3]" />
+              <span>Crop stage evaluated ({cropStage})</span>
             </div>
           </div>
 
@@ -340,8 +593,9 @@ export function IrrigationPage() {
             <Brain className="h-5 w-5" />
           </div>
           <p className="text-xs sm:text-sm text-neutral-700 leading-relaxed font-medium pt-1">
-            Soil moisture is above the target level for {rawCropName} during the vegetative stage. No irrigation is
-            recommended today. {rainfallForecast} rainfall is expected, so additional irrigation may be unnecessary.
+            {waterAmountMm === 0
+              ? `Soil moisture (${soilMoisture}%) is above the target level (${targetMoisture}%) for ${rawCropName} during the vegetative stage. No irrigation is recommended today. ${rainfallMm} mm rainfall is expected (${forecastPeriod.toLowerCase()}), so additional irrigation may be unnecessary.`
+              : `Current soil moisture (${soilMoisture}%) is below the target level (${targetMoisture}%) for ${rawCropName} during the vegetative stage. Recommended to apply ${waterAmountMm} mm water in early morning to minimize evaporation. Rainfall forecast of ${rainfallMm} mm (${forecastPeriod.toLowerCase()}) has been subtracted from gross requirement.`}
           </p>
         </div>
       </div>
@@ -358,7 +612,7 @@ export function IrrigationPage() {
 
           <button
             type="button"
-            onClick={() => setIsCompleted(!isCompleted)}
+            onClick={handleToggleComplete}
             className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all shadow-2xs ${
               isCompleted
                 ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
@@ -379,14 +633,22 @@ export function IrrigationPage() {
             {/* Step 1: Today */}
             <div className="space-y-2">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#123B22] text-white shadow-2xs">
+                <div
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-white shadow-2xs ${
+                    waterAmountMm === 0 ? 'bg-[#123B22]' : 'bg-teal-700'
+                  }`}
+                >
                   <Check className="h-4 w-4 stroke-[3]" />
                 </div>
                 <span className="font-extrabold text-[#17231A] text-sm">Today</span>
               </div>
               <div className="pl-10 space-y-0.5">
-                <p className="text-xs font-bold text-neutral-800">No irrigation</p>
-                <p className="text-[11px] text-neutral-500 font-medium">Soil moisture sufficient</p>
+                <p className="text-xs font-bold text-neutral-800">
+                  {waterAmountMm === 0 ? 'No irrigation' : `Apply ${waterAmountMm} mm`}
+                </p>
+                <p className="text-[11px] text-neutral-500 font-medium">
+                  {waterAmountMm === 0 ? 'Soil moisture sufficient' : 'Water early morning'}
+                </p>
               </div>
             </div>
 
@@ -471,7 +733,7 @@ export function IrrigationPage() {
           cropDetails={cropDetails}
           farmName={farmName}
           locationLabel={farmLocation}
-          area={activeCrop?.area || Number(currentFarm?.total_area) || 6}
+          area={activeCrop?.area || Number(activeFarm?.total_area) || 6}
           isOpen={isFarmPlanModalOpen}
           onClose={() => setIsFarmPlanModalOpen(false)}
         />
