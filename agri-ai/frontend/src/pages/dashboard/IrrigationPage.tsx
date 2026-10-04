@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { FarmPlanModal } from '@/components/crop/FarmPlanModal'
 import { getCropDetails } from '@/data/cropDetailsData'
 import { soilApi, weatherApi, irrigationApi, FarmSoilData } from '@/services/modules'
@@ -47,6 +48,7 @@ const CROP_PROFILES: Record<string, CropIrrigationProfile> = {
 
 export function IrrigationPage() {
   const navigate = useNavigate()
+  const { t, tCrop } = useLanguage()
   const { farms, selectedFarmId, setSelectedFarmId, currentFarm, activeCrop, activeLocation } = useFarm()
 
   // 1. Resolve Active Farm from FarmContext / Database
@@ -332,10 +334,10 @@ export function IrrigationPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-[#17231A]">
-              Irrigation Optimization
+              {t('irrigation.title', 'Irrigation Optimization')}
             </h1>
             <p className="text-xs sm:text-sm text-neutral-500 font-medium">
-              Personalized water recommendations based on your active crop, soil moisture, crop stage and weather.
+              {t('irrigation.subtitle', 'Personalized water recommendations based on your active crop, soil moisture, crop stage and weather.')}
             </p>
           </div>
         </div>
@@ -358,7 +360,7 @@ export function IrrigationPage() {
           {isLiveWeather && (
             <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              Live Telemetry
+              {t('weather.liveTelemetry', 'Live Telemetry')}
             </span>
           )}
         </div>
@@ -379,7 +381,7 @@ export function IrrigationPage() {
             className="group inline-flex items-center gap-1.5 text-xs font-bold text-[#123B22] hover:text-[#0E2F1B] transition-colors"
           >
             <ArrowLeftRight className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
-            <span>Change crop</span>
+            <span>{t('crop.changeCrop', 'Change crop')}</span>
           </button>
         </div>
 
@@ -399,7 +401,7 @@ export function IrrigationPage() {
             </div>
             <div>
               <div className="flex items-center gap-2.5">
-                <h2 className="text-lg font-bold text-[#17231A]">{cropDisplayName}</h2>
+                <h2 className="text-lg font-bold text-[#17231A]">{tCrop(cropDisplayName)}</h2>
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] px-2.5 py-0.5 text-[11px] font-bold text-[#123B22]">
                   Active Crop <Check className="h-3 w-3 stroke-[3]" />
                 </span>
@@ -412,7 +414,7 @@ export function IrrigationPage() {
             <div className="flex items-center gap-2 lg:px-6 lg:first:pl-0">
               <Home className="h-4 w-4 text-[#123B22] shrink-0" />
               <div>
-                <span className="text-[10px] uppercase font-semibold text-neutral-400 block leading-tight">Farm</span>
+                <span className="text-[10px] uppercase font-semibold text-neutral-400 block leading-tight">{t('farms.farm', 'Farm')}</span>
                 <strong className="text-neutral-900 font-bold text-xs">{farmName}</strong>
               </div>
             </div>
@@ -420,7 +422,7 @@ export function IrrigationPage() {
             <div className="flex items-center gap-2 lg:px-6">
               <Grid className="h-4 w-4 text-[#123B22] shrink-0" />
               <div>
-                <span className="text-[10px] uppercase font-semibold text-neutral-400 block leading-tight">Area</span>
+                <span className="text-[10px] uppercase font-semibold text-neutral-400 block leading-tight">{t('yield.area', 'Area')}</span>
                 <strong className="text-neutral-900 font-bold text-xs">{farmArea}</strong>
               </div>
             </div>
@@ -428,7 +430,7 @@ export function IrrigationPage() {
             <div className="flex items-center gap-2 lg:px-6">
               <MapPin className="h-4 w-4 text-[#123B22] shrink-0" />
               <div>
-                <span className="text-[10px] uppercase font-semibold text-neutral-400 block leading-tight">Location</span>
+                <span className="text-[10px] uppercase font-semibold text-neutral-400 block leading-tight">{t('farms.location', 'Location')}</span>
                 <strong className="text-neutral-900 font-bold text-xs">{farmLocation}</strong>
               </div>
             </div>
@@ -436,7 +438,7 @@ export function IrrigationPage() {
             <div className="flex items-center gap-2 lg:px-6">
               <Sprout className="h-4 w-4 text-[#123B22] shrink-0" />
               <div>
-                <span className="text-[10px] uppercase font-semibold text-neutral-400 block leading-tight">Stage</span>
+                <span className="text-[10px] uppercase font-semibold text-neutral-400 block leading-tight">{t('crop.stage', 'Stage')}</span>
                 <strong className="text-neutral-900 font-bold text-xs">{cropStage}</strong>
               </div>
             </div>
@@ -453,7 +455,7 @@ export function IrrigationPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-xs font-black tracking-wider text-[#123B22] uppercase">
               <Sprout className="h-4 w-4 text-emerald-700" />
-              <span>Field Conditions</span>
+              <span>{t('irrigation.fieldConditions', 'Field Conditions')}</span>
             </div>
             {soilLoading && <RefreshCw className="h-3.5 w-3.5 animate-spin text-neutral-400" />}
           </div>

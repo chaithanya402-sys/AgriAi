@@ -9,6 +9,7 @@ import { CloudSun, Droplets, Wind, ChevronRight, RefreshCw, AlertTriangle } from
 import { Card, CardContent } from '@/components/ui/Card'
 import { useAsync } from '@/hooks/useAsync'
 import { weatherApi } from '@/services/modules'
+import { useLanguage } from '@/i18n/LanguageContext'
 
 interface WeatherData {
   temperature: number
@@ -53,6 +54,7 @@ interface Props {
 }
 
 export function WeatherOverviewCard({ farmId, lat, lon }: Props) {
+  const { t } = useLanguage()
   const current  = useAsync<WeatherData>()
   const forecast = useAsync<ForecastData>()
 
@@ -81,7 +83,7 @@ export function WeatherOverviewCard({ farmId, lat, lon }: Props) {
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-bold text-neutral-900">Weather Overview</h3>
+            <h3 className="text-base font-bold text-neutral-900">{t('dashboard.currentWeather', 'Weather Overview')}</h3>
             {current.data && !current.data.demo_mode && (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -93,7 +95,7 @@ export function WeatherOverviewCard({ farmId, lat, lon }: Props) {
             to="/dashboard/weather"
             className="flex items-center gap-1 text-xs text-brand hover:underline font-medium"
           >
-            View Full Forecast
+            {t('dashboard.viewForecast', 'View Full Forecast')}
             <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -110,7 +112,7 @@ export function WeatherOverviewCard({ farmId, lat, lon }: Props) {
         {hasCoords && loading && (
           <div className="flex items-center gap-2 text-sm text-neutral-400 py-4">
             <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
-            <span>Loading weather…</span>
+            <span>{t('common.loading', 'Loading weather…')}</span>
           </div>
         )}
 
@@ -138,11 +140,11 @@ export function WeatherOverviewCard({ farmId, lat, lon }: Props) {
             <div className="flex gap-4 text-xs text-neutral-500 mb-4">
               <span className="flex items-center gap-1">
                 <Droplets className="h-3.5 w-3.5 text-info" />
-                Humidity {current.data.humidity}%
+                {t('dashboard.humidity', 'Humidity')} {current.data.humidity}%
               </span>
               <span className="flex items-center gap-1">
                 <Wind className="h-3.5 w-3.5 text-info" />
-                Wind {current.data.wind_speed.toFixed(0)} km/h
+                {t('dashboard.wind', 'Wind')} {current.data.wind_speed.toFixed(0)} km/h
               </span>
             </div>
 

@@ -82,6 +82,14 @@ export function YouTubePlayer({
 
   useEffect(() => {
     let isCancelled = false
+    if (!cleanVideoId) {
+      setIsLoading(false)
+      setHasError(false)
+      if (containerRef.current) {
+        containerRef.current.innerHTML = ''
+      }
+      return
+    }
     setIsLoading(true)
     setHasError(false)
 
@@ -213,7 +221,7 @@ export function YouTubePlayer({
 }
 
 function useMemoVideoId(raw: string): string {
-  if (!raw) return '8VbKqI9s8Fw'
+  if (!raw) return ''
   // If user pasted a full URL by accident, parse ID
   if (raw.includes('v=')) {
     return raw.split('v=')[1]?.split('&')[0] || raw

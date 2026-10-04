@@ -8,6 +8,7 @@ import {
 import { Card, CardContent } from '@/components/ui/Card'
 import { cn } from '@/lib/utils'
 import { AndhraPradeshMiniMap } from '@/components/landing/AndhraPradeshMiniMap'
+import { useLanguage } from '@/i18n/LanguageContext'
 
 // ---------------------------------------------------------------------------
 // Landing Page Data
@@ -235,6 +236,7 @@ function FAQItem({ q, a }: { q: string; a: string }) {
 
 export function LandingPage() {
   const navigate = useNavigate()
+  const { t } = useLanguage()
 
   return (
     <div className="overflow-x-hidden">
@@ -266,7 +268,7 @@ export function LandingPage() {
               {/* Badge: ✦ AI-powered smart farming */}
               <div className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF7EE]/95 border border-[#C6EDD0] px-3 py-1 text-xs font-semibold text-[#16803A] shadow-xs backdrop-blur-sm mb-4">
                 <span className="text-sm leading-none">✦</span>
-                <span>AI-powered smart farming</span>
+                <span>{t('landing.heroTitle', 'AI-powered smart farming')}</span>
               </div>
 
               {/* Main Heading */}
@@ -277,8 +279,7 @@ export function LandingPage() {
 
               {/* Supporting Text */}
               <p className="mt-4 max-w-md text-sm sm:text-base text-[#1E3A2B] leading-relaxed font-normal">
-                AgriAI turns your soil, weather and market data into clear, confident decisions —
-                so you can raise yields, cut waste and earn more.
+                {t('landing.heroSubtitle', 'AgriAI turns your soil, weather and market data into clear, confident decisions — so you can raise yields, cut waste and earn more.')}
               </p>
 
               {/* CTA Buttons */}
@@ -287,7 +288,7 @@ export function LandingPage() {
                   to="/register"
                   className="inline-flex items-center gap-2 rounded-full bg-[#16803A] hover:bg-[#136c31] px-6 py-3 text-sm sm:text-base font-semibold text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
                 >
-                  Get started free
+                  {t('landing.getStarted', 'Get started free')}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
 
@@ -295,7 +296,7 @@ export function LandingPage() {
                   to="/login"
                   className="inline-flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-[#16803A] border border-[#16803A]/40 hover:border-[#16803A] px-7 py-3 text-sm sm:text-base font-semibold shadow-xs backdrop-blur-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
                 >
-                  Log in
+                  {t('auth.signInButton', 'Log in')}
                 </Link>
               </div>
 

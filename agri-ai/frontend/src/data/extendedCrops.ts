@@ -5,7 +5,7 @@ import {
   CropSoilRequirements,
   IndianCropCategory,
 } from './cropCatalog'
-import { cropImages } from './cropImages'
+import { cropImages, getCropImage } from './cropImages'
 
 export function defineCrop(params: {
   id: string
@@ -43,7 +43,7 @@ export function defineCrop(params: {
   advantages?: string[]
   considerations?: string[]
 }): CatalogCropItem {
-  const img = params.image || cropImages[params.id] || cropImages.rice
+  const img = getCropImage(params.id) || getCropImage(params.name) || params.image || cropImages[params.id] || ''
   const profit = params.benchmarkRevenue - params.benchmarkCost
   const roi = params.benchmarkCost > 0 ? Math.round((profit / params.benchmarkCost) * 100) : 120
 

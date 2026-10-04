@@ -8,8 +8,10 @@ import { Badge } from '@/components/ui/Badge'
 import { Alert } from '@/components/ui/Alert'
 import { ButtonLoader } from '@/components/ui/Loading'
 import { useAuth } from '@/services/auth'
+import { useLanguage } from '@/i18n/LanguageContext'
 
 export function ProfilePage() {
+  const { t } = useLanguage()
   const { user, updateProfile, refreshUser } = useAuth()
 
   const [name, setName] = useState(user?.fullName || user?.name || '')
@@ -54,7 +56,7 @@ export function ProfilePage() {
         setLocation(updated.location || '')
       }
 
-      setMessage({ type: 'success', text: 'Profile updated successfully' })
+      setMessage({ type: 'success', text: t('profile.successMsg', 'Profile updated successfully') })
     } catch (err: any) {
       setMessage({ type: 'danger', text: 'Unable to update profile. Please try again.' })
     } finally {
@@ -66,8 +68,8 @@ export function ProfilePage() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">Profile</h1>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">View and update your personal account details.</p>
+        <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{t('profile.title', 'Profile')}</h1>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('profile.subtitle', 'View and update your personal account details.')}</p>
       </div>
 
       {/* Profile card */}
@@ -101,11 +103,11 @@ export function ProfilePage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label htmlFor="name">Full name</Label>
+                <Label htmlFor="name">{t('profile.fullName', 'Full name')}</Label>
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t('profile.email', 'Email')}</Label>
                 <Input
                   id="email"
                   value={user?.email || ''}
@@ -114,7 +116,7 @@ export function ProfilePage() {
                 />
               </div>
               <div>
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">{t('profile.phone', 'Phone')}</Label>
                 <Input
                   id="phone"
                   value={phone}
@@ -123,7 +125,7 @@ export function ProfilePage() {
                 />
               </div>
               <div>
-                <Label htmlFor="location">Location</Label>
+                <Label htmlFor="location">{t('profile.location', 'Location')}</Label>
                 <Input
                   id="location"
                   value={location}
@@ -135,7 +137,7 @@ export function ProfilePage() {
 
             <div className="flex items-center gap-3">
               <Button type="submit" disabled={saving}>
-                {saving ? <ButtonLoader label="Saving…" /> : 'Save changes'}
+                {saving ? <ButtonLoader label={t('profile.updating', 'Saving…')} /> : t('profile.saveProfile', 'Save changes')}
               </Button>
             </div>
           </form>

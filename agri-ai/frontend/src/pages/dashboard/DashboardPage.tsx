@@ -38,7 +38,7 @@ import {
 export function DashboardPage() {
   const { farms, currentFarm, activeLocation, activeLocationLoading, setSelectedFarmId, loading: farmsLoading, activeCrop } = useFarm()
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, tCrop } = useLanguage()
   const [farmDropdownOpen, setFarmDropdownOpen] = useState(false)
   const [locating, setLocating] = useState(false)
   const [locationStatus, setLocationStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -137,8 +137,8 @@ export function DashboardPage() {
         {/* Top bar */}
         <div className="flex items-center justify-between pb-4 border-b border-neutral-200 dark:border-neutral-800">
           <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-3.5 py-1.5 shadow-2xs">
-            <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Selected Farm</p>
-            <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">No Farm</p>
+            <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">{t('dashboard.selectedFarm', 'Selected Farm')}</p>
+            <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{t('dashboard.noFarm', 'No Farm')}</p>
           </div>
           <div className="flex items-center gap-4">
             <Link
@@ -163,9 +163,9 @@ export function DashboardPage() {
         {/* Page Title Row */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">Dashboard</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">{t('dashboard.title', 'Dashboard')}</h1>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              Welcome back! Here’s what’s happening with your farm.
+              {t('dashboard.welcomeDesc', 'Welcome back! Here’s what’s happening with your farm.')}
             </p>
           </div>
           <button
@@ -175,7 +175,7 @@ export function DashboardPage() {
             className="inline-flex items-center gap-2 px-4 py-2 bg-[#15803d] hover:bg-[#166534] active:bg-[#14532d] text-white text-sm font-medium rounded-lg shadow-sm transition-all disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
           >
             {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
-            <span>{locating ? 'Locating...' : 'Use Current Location'}</span>
+            <span>{locating ? t('dashboard.locating', 'Locating...') : t('dashboard.useLocation', 'Use Current Location')}</span>
           </button>
         </div>
 
@@ -208,10 +208,10 @@ export function DashboardPage() {
           >
             <div>
               <p className="text-[11px] font-normal text-neutral-400 dark:text-neutral-500 leading-tight">
-                Selected Farm
+                {t('dashboard.selectedFarm', 'Selected Farm')}
               </p>
               <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100 leading-tight mt-0.5">
-                {currentFarm?.name || 'Select Farm'}
+                {currentFarm?.name || t('dashboard.selectedFarm', 'Select Farm')}
               </p>
             </div>
             <ChevronDown
@@ -226,7 +226,7 @@ export function DashboardPage() {
           {farmDropdownOpen && (
             <div className="absolute left-0 mt-1.5 w-64 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-1.5 shadow-lg z-50">
               <div className="px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
-                Your Farms ({farms.length})
+                {t('farms.title', 'Your Farms')} ({farms.length})
               </div>
               <div className="max-h-60 overflow-y-auto space-y-0.5">
                 {farms.map((farm) => {
@@ -264,7 +264,7 @@ export function DashboardPage() {
                   className="flex items-center gap-2 px-3 py-1.5 text-xs text-brand hover:underline font-medium"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Manage or Add Farm
+                  {t('farms.addFarm', 'Manage or Add Farm')}
                 </Link>
               </div>
             </div>
@@ -296,10 +296,10 @@ export function DashboardPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-            Dashboard
+            {t('dashboard.title', 'Dashboard')}
           </h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
-            Welcome back! Here’s what’s happening with your farm.
+            {t('dashboard.welcomeDesc', 'Welcome back! Here’s what’s happening with your farm.')}
           </p>
         </div>
 
@@ -311,7 +311,7 @@ export function DashboardPage() {
           className="inline-flex items-center gap-2 px-4 py-2 bg-[#15803d] hover:bg-[#166534] active:bg-[#14532d] text-white text-sm font-medium rounded-lg shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-green-500/40 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
         >
           {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
-          <span>{locating ? 'Locating...' : 'Use Current Location'}</span>
+          <span>{locating ? t('dashboard.locating', 'Locating...') : t('dashboard.useLocation', 'Use Current Location')}</span>
         </button>
       </div>
 
@@ -352,7 +352,7 @@ export function DashboardPage() {
                 <Sprout className="h-5 w-5 text-brand" />
               </div>
               <div>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Farms</p>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('profile.farmCount', 'Total Farms')}</p>
                 <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{farms.length}</p>
               </div>
             </div>
@@ -366,7 +366,7 @@ export function DashboardPage() {
                 <MapPin className="h-5 w-5 text-earth-500" />
               </div>
               <div>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Area</p>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('farms.area', 'Total Area')}</p>
                 <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
                   {formatNumber(
                     farms.reduce((sum, f) => sum + (f.total_area || 0), 0)
@@ -385,7 +385,7 @@ export function DashboardPage() {
                 <Wheat className="h-5 w-5 text-info" />
               </div>
               <div>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">Total Fields</p>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('nav.farm', 'Total Fields')}</p>
                 <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
                   {farms.reduce((sum, f) => sum + (f.fields?.length || 0), 0)}
                 </p>
@@ -401,7 +401,7 @@ export function DashboardPage() {
                 <Settings className="h-5 w-5 text-warning" />
               </div>
               <div>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">Active Farm</p>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.selectedFarm', 'Active Farm')}</p>
                 <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100 truncate max-w-[120px]">
                   {currentFarm?.name || '--'}
                 </p>
@@ -440,7 +440,7 @@ export function DashboardPage() {
                 <div className="relative h-16 w-16 sm:h-18 sm:w-18 shrink-0 overflow-hidden rounded-2xl border border-emerald-200 shadow-2xs bg-emerald-100">
                   <img
                     src={activeCrop.image || '/crops/ragi.jpg'}
-                    alt={activeCrop.cropName}
+                    alt={tCrop(activeCrop.cropName)}
                     className="h-full w-full object-cover"
                     onError={(e) => {
                       ;(e.target as HTMLImageElement).src =
@@ -451,17 +451,17 @@ export function DashboardPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 uppercase tracking-wide">
-                      Active Crop
+                      {t('farms.cropCurrent', 'Active Crop')}
                     </span>
                     <span className="text-xs text-neutral-500 font-medium">
                       {activeCrop.cropCategory || 'Crops'}
                     </span>
                   </div>
                   <h3 className="text-lg sm:text-xl font-extrabold text-[#17231A] mt-0.5">
-                    {activeCrop.cropName}
+                    {tCrop(activeCrop.cropName)}
                   </h3>
                   <p className="text-xs text-neutral-600 font-medium mt-0.5">
-                    Stage: <strong className="text-neutral-900">{activeCrop.cropStage || 'Vegetative'}</strong> • Area: {activeCrop.area} ha • Farm: {activeCrop.farmName}
+                    {t('crop.tabs.stages', 'Stage')}: <strong className="text-neutral-900">{activeCrop.cropStage || 'Vegetative'}</strong> • {t('farms.area', 'Area')}: {activeCrop.area} ha • {t('nav.farm', 'Farm')}: {activeCrop.farmName}
                   </p>
                 </div>
               </div>
@@ -472,14 +472,14 @@ export function DashboardPage() {
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#123B22] text-white text-xs font-bold hover:bg-[#0E2F1B] transition-colors shadow-2xs"
                 >
                   <Sprout className="h-3.5 w-3.5" />
-                  <span>View Action Plan</span>
+                  <span>{t('crop.actionPlan', 'View Action Plan')}</span>
                 </Link>
                 <Link
                   to="/dashboard/yield"
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-neutral-200 text-neutral-800 text-xs font-bold hover:bg-neutral-50 transition-colors shadow-2xs"
                 >
                   <Wheat className="h-3.5 w-3.5 text-emerald-800" />
-                  <span>Yield Analysis</span>
+                  <span>{t('nav.yield', 'Yield Analysis')}</span>
                 </Link>
               </div>
             </div>

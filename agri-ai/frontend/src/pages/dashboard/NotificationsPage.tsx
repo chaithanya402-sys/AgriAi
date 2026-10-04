@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Bell, CheckCheck, Trash2, MailOpen, CloudSun, Bug, ShieldAlert, TrendingUp } from 'lucide-react'
 import { notificationApi } from '@/services/modules'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { useAsync } from '@/hooks/useAsync'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -58,6 +59,7 @@ function severityLabel(severity: string): string {
 }
 
 export function NotificationsPage() {
+  const { t } = useLanguage()
   const [filter, setFilter] = useState<FilterKey>('all')
   const [filtered, setFiltered] = useState<Notification[]>([])
   const { data, loading, error, run } = useAsync<NotificationListResponse>()
@@ -105,10 +107,10 @@ export function NotificationsPage() {
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
             <Bell className="h-6 w-6 text-brand" />
-            Notifications
+            {t('notifications.title', 'Notifications')}
           </h1>
           <p className="text-sm text-neutral-500">
-            Alerts and insights about your farms.
+            {t('notifications.subtitle', 'Alerts and insights about your farms.')}
           </p>
         </div>
         {data && data.items.length > 0 && (
@@ -119,7 +121,7 @@ export function NotificationsPage() {
             disabled={unreadCount === 0}
           >
             <CheckCheck className="h-4 w-4" />
-            Mark all as read
+            {t('notifications.markAllRead', 'Mark all as read')}
           </Button>
         )}
       </div>
@@ -147,11 +149,11 @@ export function NotificationsPage() {
             {/* Filter tabs */}
             <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterKey)}>
               <TabsList className="mb-4">
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="weather">Weather</TabsTrigger>
-                <TabsTrigger value="disease">Disease</TabsTrigger>
-                <TabsTrigger value="risk">Risk</TabsTrigger>
-                <TabsTrigger value="market">Market</TabsTrigger>
+                <TabsTrigger value="all">{t('common.all', 'All')}</TabsTrigger>
+                <TabsTrigger value="weather">{t('nav.weather', 'Weather')}</TabsTrigger>
+                <TabsTrigger value="disease">{t('nav.disease', 'Disease')}</TabsTrigger>
+                <TabsTrigger value="risk">{t('nav.risk', 'Risk')}</TabsTrigger>
+                <TabsTrigger value="market">{t('nav.market', 'Market')}</TabsTrigger>
               </TabsList>
 
               <TabsContent value={filter}>

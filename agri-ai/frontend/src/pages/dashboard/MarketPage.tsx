@@ -37,6 +37,7 @@ import {
 } from 'recharts'
 import { marketApi, MarketFilterParams } from '@/services/modules'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 import {
   MarketPriceItem,
   MarketSummaryData,
@@ -95,6 +96,7 @@ const getCropEmoji = (name: string) => {
 
 export function MarketPage() {
   const navigate = useNavigate()
+  const { t, tCrop } = useLanguage()
   const { currentFarm } = useFarm()
 
   // Main Data States
@@ -319,11 +321,11 @@ export function MarketPage() {
               <Store className="h-5 w-5 text-emerald-400" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#17231A] tracking-tight">
-              Market Prices
+              {t('market.title', 'Market Prices')}
             </h1>
           </div>
           <p className="text-sm text-[#66736A] font-medium">
-            Live agricultural market intelligence for better decisions.
+            {t('market.subtitle', 'Live agricultural market intelligence for better decisions.')}
           </p>
           <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-[#66736A]">
             <span className="inline-flex items-center gap-1 font-bold text-[#17231A]">
@@ -351,7 +353,7 @@ export function MarketPage() {
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#DCE8DE] bg-white hover:bg-[#F8FBF6] text-xs font-bold text-[#17231A] shadow-2xs transition-colors"
           >
             <MapPin className="h-4 w-4 text-[#16803C]" />
-            <span>{isLocating ? 'Detecting...' : 'Use My Location'}</span>
+            <span>{isLocating ? t('common.detecting', 'Detecting...') : t('farms.useGps', 'Use My Location')}</span>
           </button>
 
           <button
@@ -371,7 +373,7 @@ export function MarketPage() {
         <div className="bg-white rounded-2xl border border-[#DCE8DE] p-5 shadow-xs flex items-center justify-between gap-4">
           <div className="space-y-1">
             <span className="text-xs font-bold text-[#66736A] uppercase tracking-wider block">
-              Average Market Price
+              {t('market.modalPrice', 'Average Market Price')}
             </span>
             <div className="text-2xl sm:text-3xl font-black text-[#17231A]">
               ₹ {avgPrice.toLocaleString('en-IN')}
@@ -634,7 +636,7 @@ export function MarketPage() {
             <Search className="h-4 w-4 text-[#66736A] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search crop or market center..."
+              placeholder={t('market.searchCrop', 'Search crop or market center...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-[#F8FBF6] border border-[#DCE8DE] rounded-xl pl-9 pr-3 py-2 text-xs font-medium text-[#17231A] placeholder:text-[#66736A] focus:outline-hidden focus:ring-2 focus:ring-[#16803C]/30"

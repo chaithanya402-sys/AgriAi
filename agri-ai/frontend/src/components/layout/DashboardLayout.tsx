@@ -8,6 +8,7 @@ import {
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/services/auth'
 import { useLanguage } from '@/i18n/LanguageContext'
+import { LanguageSelector } from '@/components/ui/LanguageSelector'
 import { cn } from '@/lib/utils'
 
 interface NavItem {
@@ -46,52 +47,53 @@ export function DashboardLayout() {
   const navGroups: NavGroup[] = [
     {
       id: 'overview',
-      label: 'OVERVIEW',
+      label: t('nav.overview', 'OVERVIEW'),
       items: [
-        { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { to: '/dashboard', label: t('nav.dashboard', 'Dashboard'), icon: LayoutDashboard },
       ],
     },
     {
       id: 'farm',
-      label: 'FARM',
+      label: t('nav.farm', 'FARM'),
       items: [
-        { to: '/dashboard/farms', label: 'Farm Management', icon: Sprout },
+        { to: '/dashboard/farms', label: t('nav.farms', 'Farm Management'), icon: Sprout },
       ],
     },
     {
       id: 'intelligence',
-      label: 'INTELLIGENCE',
+      label: t('nav.intelligence', 'INTELLIGENCE'),
       items: [
-        { to: '/dashboard/soil',       label: 'Soil Analysis',        icon: FlaskConical },
-        { to: '/dashboard/crop',       label: 'Crop Recommendation',  icon: Sprout },
-        { to: '/dashboard/irrigation', label: 'Irrigation',           icon: Droplets },
-        { to: '/dashboard/action-plan', label: 'Crop Action Plan',    icon: Sprout },
-        { to: '/dashboard/yield',      label: 'Yield Prediction',     icon: TrendingUp },
-        { to: '/dashboard/weather',    label: 'Weather',              icon: CloudSun },
-        { to: '/dashboard/disease',    label: 'Disease Detection',    icon: Bug },
-        { to: '/dashboard/fertilizer', label: 'Fertilizer',           icon: FlaskConical },
+        { to: '/dashboard/soil',        label: t('nav.soil', 'Soil Analysis'),               icon: FlaskConical },
+        { to: '/dashboard/crop',        label: t('nav.crop', 'Crop Recommendation'),         icon: Sprout },
+        { to: '/dashboard/irrigation',  label: t('nav.irrigation', 'Irrigation'),            icon: Droplets },
+        { to: '/dashboard/action-plan', label: t('nav.actionPlan', 'Crop Action Plan'),      icon: Sprout },
+        { to: '/dashboard/yield',       label: t('nav.yield', 'Yield Prediction'),           icon: TrendingUp },
+        { to: '/dashboard/weather',     label: t('nav.weather', 'Weather'),                  icon: CloudSun },
+        { to: '/dashboard/disease',     label: t('nav.disease', 'Disease Detection'),        icon: Bug },
+        { to: '/dashboard/fertilizer',  label: t('nav.fertilizer', 'Fertilizer'),            icon: FlaskConical },
       ],
     },
     {
       id: 'business',
-      label: 'BUSINESS',
+      label: t('nav.business', 'BUSINESS'),
       items: [
-        { to: '/dashboard/risk',     label: 'Risk',         icon: ShieldAlert },
-        { to: '/dashboard/market',   label: 'Market',       icon: LineChart },
-        { to: '/dashboard/profit',   label: 'Profit',       icon: Wallet },
-        { to: '/dashboard/optimize', label: 'Optimization', icon: Workflow },
+        { to: '/dashboard/risk',     label: t('nav.risk', 'Risk Assessment'),       icon: ShieldAlert },
+        { to: '/dashboard/market',   label: t('nav.market', 'Market Prices'),       icon: LineChart },
+        { to: '/dashboard/profit',   label: t('nav.profit', 'Profit Calculator'),   icon: Wallet },
+        { to: '/dashboard/optimize', label: t('nav.optimize', 'Optimization'),      icon: Workflow },
       ],
     },
     {
       id: 'assistance',
-      label: 'ASSISTANCE',
+      label: t('nav.assistance', 'ASSISTANCE'),
       items: [
-        { to: '/dashboard/assistant',     label: 'AI Assistant',  icon: Bot },
-        { to: '/dashboard/notifications', label: 'Notifications', icon: Bell },
-        { to: '/dashboard/reports',       label: 'Reports',       icon: FileText },
+        { to: '/dashboard/assistant',     label: t('nav.assistant', 'AI Assistant'),         icon: Bot },
+        { to: '/dashboard/notifications', label: t('nav.notifications', 'Notifications'),   icon: Bell },
+        { to: '/dashboard/reports',       label: t('nav.reports', 'Reports'),                 icon: FileText },
       ],
     },
   ]
+
 
   // Auto-expand the section that contains the current route
   useEffect(() => {
@@ -130,7 +132,7 @@ export function DashboardLayout() {
             <aside className="absolute left-0 top-0 flex h-full w-[260px] flex-col bg-white border-r border-neutral-200 shadow-xl dark:bg-neutral-900 dark:border-neutral-800">
               {/* Mobile close button in header */}
               <div className="flex h-14 items-center justify-between border-b border-neutral-200 px-4 dark:border-neutral-800">
-                <Link to="/dashboard" onClick={() => setSidebarOpen(false)} className="flex items-center gap-2.5">
+                <Link to="/dashboard" onClick={() => setSidebarOpen(false)} className="flex items-center gap-2">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2E7D32] text-white">
                     <Leaf className="h-4 w-4" />
                   </div>
@@ -138,12 +140,15 @@ export function DashboardLayout() {
                     Agri<span className="text-[#2E7D32]">AI</span>
                   </span>
                 </Link>
-                <button
-                  onClick={() => setSidebarOpen(false)}
-                  className="rounded p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <LanguageSelector variant="compact" />
+                  <button
+                    onClick={() => setSidebarOpen(false)}
+                    className="rounded p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
               <div className="flex-1 overflow-y-auto">
                 <SidebarBody
@@ -180,7 +185,7 @@ export function DashboardLayout() {
                   Agri<span className="text-[#2E7D32]">AI</span>
                 </span>
               </Link>
-              <div className="w-7" />
+              <LanguageSelector variant="compact" />
             </header>
           </div>
 
@@ -217,15 +222,16 @@ function SidebarContent({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex h-[60px] shrink-0 items-center gap-2.5 border-b border-neutral-200 px-5 dark:border-neutral-800">
-        <Link to="/dashboard" onClick={onNavigate} className="flex items-center gap-2.5">
+      <div className="flex h-[60px] shrink-0 items-center justify-between border-b border-neutral-200 px-4 dark:border-neutral-800">
+        <Link to="/dashboard" onClick={onNavigate} className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2E7D32] text-white shadow-sm">
             <Leaf className="h-4 w-4" />
           </div>
-          <span className="text-[18px] font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+          <span className="text-[17px] font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
             Agri<span className="text-[#2E7D32]">AI</span>
           </span>
         </Link>
+        <LanguageSelector variant="compact" />
       </div>
 
       {/* Scrollable nav body */}
@@ -250,6 +256,7 @@ function SidebarBody({
   onNavigate,
   user,
   onLogout,
+  t,
   collapsedSections,
   toggleSection,
 }: {
@@ -257,7 +264,7 @@ function SidebarBody({
   onNavigate?: () => void
   user?: { name?: string; email?: string } | null
   onLogout: () => void
-  t: (key: string) => string
+  t: (key: string, fallback?: string, variables?: Record<string, string | number>) => string
   collapsedSections: Record<string, boolean>
   toggleSection: (id: string) => void
 }) {
@@ -362,7 +369,7 @@ function SidebarBody({
           {({ isActive }) => (
             <>
               <User className={cn('h-4 w-4 shrink-0', isActive ? 'text-white' : 'text-[#2E7D32] dark:text-[#46c05b]')} />
-              <span>Profile</span>
+              <span>{t('nav.profile', 'Profile')}</span>
             </>
           )}
         </NavLink>
@@ -383,7 +390,7 @@ function SidebarBody({
           {({ isActive }) => (
             <>
               <Settings className={cn('h-4 w-4 shrink-0', isActive ? 'text-white' : 'text-[#2E7D32] dark:text-[#46c05b]')} />
-              <span>Settings</span>
+              <span>{t('nav.settings', 'Settings')}</span>
             </>
           )}
         </NavLink>
@@ -395,7 +402,7 @@ function SidebarBody({
           className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-[13.5px] font-medium text-neutral-600 transition-all duration-150 mx-0.5 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 text-left"
         >
           <LogOut className="h-4 w-4 shrink-0 text-[#2E7D32] dark:text-[#46c05b]" />
-          <span>Log out</span>
+          <span>{t('nav.logout', 'Log out')}</span>
         </button>
       </div>
     </div>

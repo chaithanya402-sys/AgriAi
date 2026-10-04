@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     OPENWEATHER_API_KEY: Optional[str] = None
     MARKET_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
+    GROQ_API_KEY: Optional[str] = None
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"

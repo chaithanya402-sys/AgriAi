@@ -21,4 +21,11 @@ def ask(
     if not farm:
         raise HTTPException(status_code=404, detail="Farm not found")
 
-    return service.answer(db, data.farm_id, user.id, data.question)
+    return service.answer(
+        db,
+        data.farm_id,
+        user.id,
+        data.question,
+        language=data.language or "en",
+        crop=data.crop,
+    )

@@ -24,6 +24,7 @@ import { PageLoader, ButtonLoader } from '@/components/ui/Loading'
 import { formatNumber, formatCurrency, cn } from '@/lib/utils'
 import type { CropOption, CropRecommendationResult } from '@/types'
 import { CropDetailsModal } from '@/components/crop/CropDetailsModal'
+import { useLanguage } from '@/i18n/LanguageContext'
 import {
   getAll39CropsList,
   getAllCatalogCropsList,
@@ -36,6 +37,7 @@ import {
   isModelSupportedCrop,
   cropCatalog,
   cropImages,
+  getCropImage,
 } from '@/data/cropCatalog'
 import {
   BarChart,
@@ -108,6 +110,7 @@ function FeatureImportanceChart({
 export function CropPage() {
   const { farms, selectedFarmId, setSelectedFarmId, currentFarm, loading: farmsLoading, activateCropPlan, activeCrop } = useFarm()
   const { data: asyncResult, loading, error, run } = useAsync<CropRecommendationResult>()
+  const { t, tCrop } = useLanguage()
 
   const activeFarm = farms.find((f) => f.id === selectedFarmId) || currentFarm || null
   const navigate = useNavigate()
@@ -331,7 +334,12 @@ export function CropPage() {
       const existing = isEvaluated ? (recMap.get(meta.name.toLowerCase()) || recMap.get(canonicalId)) : undefined
       const isMlRanked = Boolean(existing)
       const isSupported = isModelSupportedCrop(canonicalId)
-      const canonicalImg = meta.image || cropImages[canonicalId] || '/crops/ragi.jpg'
+      const canonicalImg =
+        getCropImage(meta.displayName || meta.name) ||
+        getCropImage(canonicalId) ||
+        meta.image ||
+        cropImages[canonicalId] ||
+        ''
 
       if (existing) {
         return {
@@ -438,17 +446,17 @@ export function CropPage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#17231A] tracking-tight">
-              Crop Recommendations
+              {t('crop.title', 'Crop Recommendations')}
             </h1>
             <span className="px-3 py-1 text-xs font-bold bg-[#EAF6EA] text-[#2E7D32] rounded-full border border-[#2E7D32]/20">
-              {fullCropList.length > 0 ? `${fullCropList.length} crops analyzed` : 'Indian Crop Catalog'}
+              {fullCropList.length > 0 ? `${fullCropList.length} ${t('crop.cropsAnalyzed', 'crops analyzed')}` : t('crop.indianCropCatalog', 'Indian Crop Catalog')}
             </span>
           </div>
           <p className="mt-1 text-sm text-neutral-500">
-            AI-powered agronomic matchmaking based on your regional soil conditions, climate, and historical crop yield.
+            {t('crop.subtitle', 'AI-powered agronomic matchmaking based on your regional soil conditions, climate, and historical crop yield.')}
           </p>
         </div>
-        {executedResult?.demo_mode && <Badge variant="info">Demo data</Badge>}
+        {executedResult?.demo_mode && <Badge variant="info">{t('common.demoData', 'Demo data')}</Badge>}
       </div>
 
       {/* Activation confirmation toast banner */}
@@ -458,7 +466,7 @@ export function CropPage() {
           <div>
             <p className="font-extrabold text-sm">{activationToast}</p>
             <p className="text-xs text-emerald-800 font-medium">
-              Action Plan has been synchronized for your active farm.
+              {t('crop.actionPlanSynced', 'Action Plan has been synchronized for your active farm.')}
             </p>
           </div>
         </div>
@@ -469,17 +477,19 @@ export function CropPage() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-bold text-neutral-900">
             <Sprout className="h-5 w-5 text-[#2E7D32]" />
-            Farm Soil & Climate Parameters
+            {t('crop.soilClimateParams', 'Farm Soil & Climate Parameters')}
           </CardTitle>
           <CardDescription>
-            Auto-populated from {loc.district ? `${loc.district}, ${loc.state}` : 'your farm location'}. You can adjust any parameter to simulate crop results.
+            {t('crop.autoPopulated', 'Auto-populated from {location}. You can adjust any parameter to simulate crop results.', {
+              location: loc.district ? `${loc.district}, ${loc.state}` : t('crop.yourFarmLoc', 'your farm location'),
+            })}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1.5">
-                <Label>Farm Selection</Label>
+                <Label>{t('crop.farmSelection', 'Farm Selection')}</Label>
                 <Select
                   value={selectedFarmId?.toString() || activeFarm?.id?.toString() || ''}
                   onValueChange={(v) => {
@@ -494,7 +504,7 @@ export function CropPage() {
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select farm" />
+                    <SelectValue placeholder={t('crop.selectFarm', 'Select farm')} />
                   </SelectTrigger>
                   <SelectContent>
                     {farms.map((farm) => (
@@ -508,7 +518,7 @@ export function CropPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Nitrogen (N) kg/ha</Label>
+                <Label>{t('crop.nitrogen', 'Nitrogen (N) kg/ha')}</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -520,7 +530,7 @@ export function CropPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Phosphorus (P) kg/ha</Label>
+                <Label>{t('crop.phosphorus', 'Phosphorus (P) kg/ha')}</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -532,7 +542,7 @@ export function CropPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Potassium (K) kg/ha</Label>
+                <Label>{t('crop.potassium', 'Potassium (K) kg/ha')}</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -544,7 +554,7 @@ export function CropPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Temperature (°C)</Label>
+                <Label>{t('crop.temperature', 'Temperature (°C)')}</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -556,7 +566,7 @@ export function CropPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Humidity (%)</Label>
+                <Label>{t('crop.humidity', 'Humidity (%)')}</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -568,7 +578,7 @@ export function CropPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Soil pH</Label>
+                <Label>{t('crop.soilPh', 'Soil pH')}</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -580,7 +590,7 @@ export function CropPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Rainfall (mm)</Label>
+                <Label>{t('crop.rainfall', 'Rainfall (mm)')}</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -595,11 +605,11 @@ export function CropPage() {
             <div className="flex justify-end pt-2">
               <Button type="submit" disabled={loading || formLoading} className="bg-[#123B22] hover:bg-[#2E7D32]">
                 {loading ? (
-                  <ButtonLoader label="Analyzing crop suitability..." />
+                  <ButtonLoader label={t('crop.analyzingSuitability', 'Analyzing crop suitability...')} />
                 ) : hasExecuted && !isDirty ? (
-                  'Re-rank Crops'
+                  t('crop.rerankCrops', 'Re-rank Crops')
                 ) : (
-                  'Recommend & Rank Crops'
+                  t('crop.recommendAndRank', 'Recommend & Rank Crops')
                 )}
               </Button>
             </div>
@@ -611,7 +621,7 @@ export function CropPage() {
       {isDirty && (
         <Alert variant="warning" className="border-amber-300 bg-amber-50 text-amber-900">
           <AlertTriangle className="h-4 w-4 text-amber-700" />
-          <span>Parameters changed. Click &quot;Re-rank Crops&quot; to evaluate new suitability scores.</span>
+          <span>{t('crop.staleParamsAlert', 'Parameters changed. Click "Re-rank Crops" to evaluate new suitability scores.')}</span>
         </Alert>
       )}
 
@@ -635,7 +645,7 @@ export function CropPage() {
       {error && (
         <Alert variant="danger">
           <AlertTriangle className="h-4 w-4" />
-          <span>{error || 'Unable to generate crop recommendations. Please check the parameters and try again.'}</span>
+          <span>{error || t('crop.errorFallback', 'Unable to generate crop recommendations. Please check the parameters and try again.')}</span>
         </Alert>
       )}
 
@@ -649,11 +659,14 @@ export function CropPage() {
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
               <span className="font-bold">
-                AI Matchmaking Active for {activeFarm?.name || 'Selected Farm'}: Showing {filteredCrops.length} ranked crops based on soil &amp; climate parameters.
+                {t('crop.matchmakingActive', 'AI Matchmaking Active for {farm}: Showing {count} ranked crops based on soil & climate parameters.', {
+                  farm: activeFarm?.name || t('crop.selectedFarm', 'Selected Farm'),
+                  count: filteredCrops.length,
+                })}
               </span>
             </div>
             <span className="text-emerald-700 font-semibold shrink-0">
-              Sorted by Suitability Score (High → Low)
+              {t('crop.sortedBySuitability', 'Sorted by Suitability Score (High → Low)')}
             </span>
           </div>
         ) : (
@@ -661,11 +674,13 @@ export function CropPage() {
             <div className="flex items-center gap-2">
               <Sprout className="h-4 w-4 text-[#2E7D32] shrink-0" />
               <span className="font-bold">
-                Indian Crop Catalog ({fullCropList.length} crops): Browsing all supported crops across India.
+                {t('crop.catalogBanner', 'Indian Crop Catalog ({count} crops): Browsing all supported crops across India.', {
+                  count: fullCropList.length,
+                })}
               </span>
             </div>
             <span className="text-neutral-500 shrink-0">
-              Click <strong>&quot;Recommend &amp; Rank Crops&quot;</strong> above to calculate AI suitability for your farm.
+              {t('crop.catalogPrompt', 'Click "Recommend & Rank Crops" above to calculate AI suitability for your farm.')}
             </span>
           </div>
         )}
@@ -677,7 +692,7 @@ export function CropPage() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
               <Input
                 type="text"
-                placeholder="Search 130+ crops..."
+                placeholder={t('crop.searchPlaceholder', 'Search 130+ crops...')}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value)
@@ -692,7 +707,7 @@ export function CropPage() {
               <button
                 type="button"
                 onClick={() => setViewMode('grid')}
-                title="Grid View"
+                title={t('crop.viewGrid', 'Grid View')}
                 className={cn(
                   'px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
                   viewMode === 'grid'
@@ -701,12 +716,12 @@ export function CropPage() {
                 )}
               >
                 <LayoutGrid className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Grid</span>
+                <span className="hidden sm:inline">{t('crop.grid', 'Grid')}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
-                title="List View"
+                title={t('crop.viewList', 'List View')}
                 className={cn(
                   'px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
                   viewMode === 'list'
@@ -715,37 +730,58 @@ export function CropPage() {
                 )}
               >
                 <List className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">List</span>
+                <span className="hidden sm:inline">{t('crop.list', 'List')}</span>
               </button>
             </div>
           </div>
 
           {/* Quick Counter */}
           <span className="text-xs font-semibold text-neutral-500 shrink-0">
-            Showing {paginatedCrops.length} of {filteredCrops.length} crops
+            {t('crop.showingCount', 'Showing {shown} of {total} crops', {
+              shown: paginatedCrops.length,
+              total: filteredCrops.length,
+            })}
           </span>
         </div>
 
         {/* Category Pills Filter */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
-          {CROP_CATEGORIES.map((cat) => (
-            <button
-              key={cat.key}
-              type="button"
-              onClick={() => {
-                setSelectedCategory(cat.key)
-                setCurrentPage(1)
-              }}
-              className={cn(
-                'px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer',
-                selectedCategory === cat.key
-                  ? 'bg-[#123B22] text-white shadow-xs'
-                  : 'bg-white text-neutral-600 hover:text-neutral-900 border border-neutral-200/90 hover:bg-neutral-50'
-              )}
-            >
-              {cat.label}
-            </button>
-          ))}
+          {CROP_CATEGORIES.map((cat) => {
+            const translatedLabel =
+              cat.key === 'all'
+                ? t('crop.categories.all', 'All Crops')
+                : cat.key === 'Cereals'
+                ? t('crop.categories.cereals', 'Cereals & Millets')
+                : cat.key === 'Pulses'
+                ? t('crop.categories.pulses', 'Pulses')
+                : cat.key === 'Oilseeds'
+                ? t('crop.categories.oilseeds', 'Oilseeds')
+                : cat.key === 'Vegetables'
+                ? t('crop.categories.vegetables', 'Vegetables')
+                : cat.key === 'Fruits'
+                ? t('crop.categories.fruits', 'Fruits')
+                : (cat.key as string) === 'Commercial Crops' || (cat.key as string) === 'Cash Crops'
+                ? t('crop.categories.cash', 'Commercial & Cash Crops')
+                : cat.label
+            return (
+              <button
+                key={cat.key}
+                type="button"
+                onClick={() => {
+                  setSelectedCategory(cat.key)
+                  setCurrentPage(1)
+                }}
+                className={cn(
+                  'px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer',
+                  selectedCategory === cat.key
+                    ? 'bg-[#123B22] text-white shadow-xs'
+                    : 'bg-white text-neutral-600 hover:text-neutral-900 border border-neutral-200/90 hover:bg-neutral-50'
+                )}
+              >
+                {translatedLabel}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -757,16 +793,16 @@ export function CropPage() {
           <table className="w-full text-left text-sm">
             <thead className="bg-neutral-50 text-[11px] font-extrabold text-neutral-500 uppercase tracking-wider border-b border-neutral-200">
               <tr>
-                <th className="py-3.5 px-4">Crop</th>
-                <th className="py-3.5 px-3">Category</th>
-                <th className="py-3.5 px-3">Season &amp; Duration</th>
-                <th className="py-3.5 px-3">Water &amp; Soil</th>
-                <th className="py-3.5 px-3">Expected Yield</th>
+                <th className="py-3.5 px-4">{t('crop.table.crop', 'Crop')}</th>
+                <th className="py-3.5 px-3">{t('crop.table.category', 'Category')}</th>
+                <th className="py-3.5 px-3">{t('crop.table.seasonDuration', 'Season & Duration')}</th>
+                <th className="py-3.5 px-3">{t('crop.table.waterSoil', 'Water & Soil')}</th>
+                <th className="py-3.5 px-3">{t('crop.table.expectedYield', 'Expected Yield')}</th>
                 <th className="py-3.5 px-3">
-                  {hasExecuted && executedResult && !isDirty ? 'AI Match' : 'Suitability'}
+                  {hasExecuted && executedResult && !isDirty ? t('crop.table.aiMatch', 'AI Match') : t('crop.table.suitability', 'Suitability')}
                 </th>
-                <th className="py-3.5 px-3">Risk</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
+                <th className="py-3.5 px-3">{t('crop.table.risk', 'Risk')}</th>
+                <th className="py-3.5 px-4 text-right">{t('crop.table.actions', 'Actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
@@ -794,31 +830,33 @@ export function CropPage() {
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="relative h-10 w-10 rounded-xl overflow-hidden shrink-0 border border-neutral-200 shadow-2xs bg-emerald-50">
-                          <img
-                            src={crop.image}
-                            alt={crop.crop}
-                            loading="lazy"
-                            className="h-full w-full object-cover"
-                            onError={(e) => {
-                              ;(e.target as HTMLImageElement).src =
-                                'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=400&q=80'
-                            }}
-                          />
+                        <div className="relative h-10 w-10 rounded-xl overflow-hidden shrink-0 border border-neutral-200 shadow-2xs bg-emerald-50 flex items-center justify-center">
+                          {crop.image ? (
+                            <img
+                              src={crop.image}
+                              alt={crop.crop}
+                              loading="lazy"
+                              className="h-full w-full object-cover"
+                              onError={(e) => {
+                                ;(e.target as HTMLElement).style.display = 'none'
+                              }}
+                            />
+                          ) : null}
+                          <Sprout className="h-5 w-5 text-emerald-700/60 pointer-events-none -z-0" />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
                             <span className="font-extrabold text-[#17231A] group-hover:text-[#2E7D32] transition-colors truncate">
-                              {crop.crop}
+                              {tCrop(crop.crop)}
                             </span>
                             {isBestMatch && (
                               <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-emerald-100 text-emerald-800">
-                                #1 Best
+                                #1 {t('crop.best', 'Best')}
                               </span>
                             )}
                             {isActive && (
                               <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-emerald-700 text-white">
-                                Active
+                                {t('crop.active', 'Active')}
                               </span>
                             )}
                           </div>
@@ -891,7 +929,7 @@ export function CropPage() {
                         </div>
                       ) : (
                         <span className="text-[11px] font-semibold text-neutral-500 bg-neutral-50 px-2 py-0.5 rounded-md border border-neutral-200">
-                          Catalog
+                          {t('crop.catalog', 'Catalog')}
                         </span>
                       )}
                     </td>
@@ -907,7 +945,7 @@ export function CropPage() {
                             : 'bg-rose-50 text-rose-700 border border-rose-200'
                         )}
                       >
-                        {crop.risk <= 0.3 ? 'Low' : crop.risk <= 0.6 ? 'Medium' : 'High'}
+                        {crop.risk <= 0.3 ? t('crop.low', 'Low') : crop.risk <= 0.6 ? t('crop.medium', 'Medium') : t('crop.high', 'High')}
                       </span>
                     </td>
 
@@ -918,12 +956,12 @@ export function CropPage() {
                           onClick={() => setSelectedCropModal({ crop, rank: crop.rank })}
                           className="px-2.5 py-1 rounded-lg text-xs font-bold text-neutral-600 hover:text-[#2E7D32] hover:bg-neutral-100 transition-colors cursor-pointer"
                         >
-                          Details
+                          {t('crop.details', 'Details')}
                         </button>
                         {isActive ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 text-white text-xs font-bold shadow-2xs">
                             <CheckCircle2 className="h-3 w-3" />
-                            <span>Active</span>
+                            <span>{t('crop.active', 'Active')}</span>
                           </span>
                         ) : (
                           <button
@@ -932,7 +970,7 @@ export function CropPage() {
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#EAF6EA] hover:bg-[#123B22] text-[#2E7D32] hover:text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
                           >
                             <Sprout className="h-3 w-3" />
-                            <span>Activate</span>
+                            <span>{t('crop.activate', 'Activate')}</span>
                           </button>
                         )}
                       </div>
@@ -983,32 +1021,34 @@ export function CropPage() {
                   {isActive ? (
                     <div className="bg-emerald-700 text-white text-[11px] font-extrabold px-3 py-0.5 text-center tracking-wide uppercase flex items-center justify-center gap-1.5 shadow-xs">
                       <CheckCircle2 className="h-3.5 w-3.5" />
-                      <span>Active Crop for {activeFarm?.name || 'Your Farm'}</span>
+                      <span>{t('crop.activeCropFor', 'Active Crop for')} {activeFarm?.name || t('crop.yourFarm', 'Your Farm')}</span>
                     </div>
                   ) : isBestMatch ? (
                     <div className="bg-[#2E7D32] text-white text-[11px] font-extrabold px-3 py-0.5 text-center tracking-wide uppercase">
-                      ⭐ #1 Recommended Crop for {activeFarm?.name || 'Your Farm'}
+                      ⭐ #1 {t('crop.recommendedFor', 'Recommended Crop for')} {activeFarm?.name || t('crop.yourFarm', 'Your Farm')}
                     </div>
                   ) : null}
 
                   <CardHeader className="pb-2.5 pt-4">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="relative h-12 w-12 rounded-xl overflow-hidden shrink-0 border border-neutral-200 shadow-2xs bg-emerald-50">
-                          <img
-                            src={crop.image}
-                            alt={crop.crop}
-                            loading="lazy"
-                            className="h-full w-full object-cover"
-                            onError={(e) => {
-                              ;(e.target as HTMLImageElement).src =
-                                'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=400&q=80'
-                            }}
-                          />
+                        <div className="relative h-12 w-12 rounded-xl overflow-hidden shrink-0 border border-neutral-200 shadow-2xs bg-emerald-50 flex items-center justify-center">
+                          {crop.image ? (
+                            <img
+                              src={crop.image}
+                              alt={crop.crop}
+                              loading="lazy"
+                              className="h-full w-full object-cover"
+                              onError={(e) => {
+                                ;(e.target as HTMLElement).style.display = 'none'
+                              }}
+                            />
+                          ) : null}
+                          <Sprout className="h-6 w-6 text-emerald-700/60 pointer-events-none -z-0" />
                         </div>
                         <div className="min-w-0">
                           <CardTitle className="text-base sm:text-lg font-extrabold text-[#17231A] group-hover:text-[#2E7D32] transition-colors truncate">
-                            {crop.crop}
+                            {tCrop(crop.crop)}
                           </CardTitle>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="text-[11px] font-semibold text-neutral-400">
@@ -1023,7 +1063,7 @@ export function CropPage() {
                                   : 'bg-neutral-100 text-neutral-600'
                               )}
                             >
-                              {crop.isModelRanked ? 'ML Ranked' : 'Catalog Crop'}
+                              {crop.isModelRanked ? t('crop.mlRanked', 'ML Ranked') : t('crop.catalogCrop', 'Catalog Crop')}
                             </span>
                           </div>
                         </div>
@@ -1032,7 +1072,7 @@ export function CropPage() {
                       <div className="flex items-center gap-1.5 shrink-0">
                         {isActive && (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                            Active
+                            {t('crop.active', 'Active')}
                           </span>
                         )}
                         <span className="text-xs font-extrabold text-neutral-400">#{crop.rank}</span>
@@ -1046,7 +1086,7 @@ export function CropPage() {
                     {isEvaluated ? (
                       <div>
                         <div className="mb-1 flex items-center justify-between text-xs font-semibold">
-                          <span className="text-neutral-500">AI Match Score</span>
+                          <span className="text-neutral-500">{t('crop.aiMatchScore', 'AI Match Score')}</span>
                           <span className="font-extrabold text-[#17231A]">{scorePercent}%</span>
                         </div>
                         <div className="h-2 w-full rounded-full bg-neutral-100 overflow-hidden">
@@ -1065,9 +1105,9 @@ export function CropPage() {
                       </div>
                     ) : (
                       <div className="flex items-center justify-between text-xs bg-neutral-50/80 border border-neutral-100 rounded-xl px-3 py-2">
-                        <span className="text-neutral-500 font-medium">AI Suitability</span>
+                        <span className="text-neutral-500 font-medium">{t('crop.aiSuitability', 'AI Suitability')}</span>
                         <span className="font-bold text-neutral-600 bg-white px-2 py-0.5 rounded-md border border-neutral-200/80 text-[11px]">
-                          Click Recommend to Rank
+                          {t('crop.clickToRank', 'Click Recommend to Rank')}
                         </span>
                       </div>
                     )}
@@ -1075,28 +1115,28 @@ export function CropPage() {
                     {/* 2x2 Metric Tiles */}
                     <div className="grid grid-cols-2 gap-2 text-xs pt-1">
                       <div className="rounded-xl bg-neutral-50/80 p-2.5 text-center group-hover:bg-[#EAF6EA]/40 transition-colors border border-neutral-100">
-                        <p className="text-[11px] text-neutral-500">Expected Yield</p>
+                        <p className="text-[11px] text-neutral-500">{t('crop.metrics.expectedYield', 'Expected Yield')}</p>
                         <p className="text-sm font-extrabold text-[#17231A] mt-0.5">
                           {formatNumber(crop.expected_yield)} t/ha
                         </p>
                       </div>
 
                       <div className="rounded-xl bg-neutral-50/80 p-2.5 text-center group-hover:bg-[#EAF6EA]/40 transition-colors border border-neutral-100">
-                        <p className="text-[11px] text-neutral-500">Revenue</p>
+                        <p className="text-[11px] text-neutral-500">{t('crop.metrics.revenue', 'Revenue')}</p>
                         <p className="text-sm font-extrabold text-[#17231A] mt-0.5">
                           {formatCurrency(crop.revenue)}
                         </p>
                       </div>
 
                       <div className="rounded-xl bg-neutral-50/80 p-2.5 text-center group-hover:bg-[#EAF6EA]/40 transition-colors border border-neutral-100">
-                        <p className="text-[11px] text-neutral-500">Production</p>
+                        <p className="text-[11px] text-neutral-500">{t('crop.metrics.production', 'Production')}</p>
                         <p className="text-sm font-extrabold text-[#17231A] mt-0.5">
                           {formatNumber(crop.production)} t
                         </p>
                       </div>
 
                       <div className="rounded-xl bg-neutral-50/80 p-2.5 text-center group-hover:bg-[#EAF6EA]/40 transition-colors border border-neutral-100">
-                        <p className="text-[11px] text-neutral-500">Risk</p>
+                        <p className="text-[11px] text-neutral-500">{t('crop.metrics.risk', 'Risk')}</p>
                         <div className="flex items-center justify-center gap-1 mt-0.5">
                           <Shield className="h-3 w-3 text-[#2E7D32]" />
                           <span
@@ -1108,7 +1148,7 @@ export function CropPage() {
                                 : 'text-rose-600'
                             }`}
                           >
-                            {crop.risk <= 0.3 ? 'Low' : crop.risk <= 0.6 ? 'Medium' : 'High'}
+                            {crop.risk <= 0.3 ? t('crop.low', 'Low') : crop.risk <= 0.6 ? t('crop.medium', 'Medium') : t('crop.high', 'High')}
                           </span>
                         </div>
                       </div>
@@ -1124,7 +1164,7 @@ export function CropPage() {
                         }}
                         className="text-xs font-bold text-neutral-500 hover:text-[#2E7D32] transition-colors cursor-pointer"
                       >
-                        View full profile →
+                        {t('crop.viewFullProfile', 'View full profile →')}
                       </button>
                       {isActive ? (
                         <button
@@ -1136,7 +1176,7 @@ export function CropPage() {
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-700 text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
                         >
                           <CheckCircle2 className="h-3.5 w-3.5" />
-                          <span>Active Crop</span>
+                          <span>{t('crop.activeCrop', 'Active Crop')}</span>
                         </button>
                       ) : (
                         <button
@@ -1148,7 +1188,7 @@ export function CropPage() {
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#EAF6EA] hover:bg-[#123B22] text-[#2E7D32] hover:text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
                         >
                           <Sprout className="h-3.5 w-3.5" />
-                          <span>Activate Crop</span>
+                          <span>{t('crop.activateCrop', 'Activate Crop')}</span>
                         </button>
                       )}
                     </div>
@@ -1168,7 +1208,10 @@ export function CropPage() {
             onClick={() => setCurrentPage((p) => p + 1)}
             className="px-6 py-2.5 text-sm font-bold text-[#123B22] bg-white border border-[#2E7D32]/40 rounded-2xl hover:bg-[#EAF6EA] transition-all shadow-xs cursor-pointer"
           >
-            Load More Crops ({paginatedCrops.length} of {filteredCrops.length})
+            {t('crop.loadMore', 'Load More Crops ({shown} of {total})', {
+              shown: paginatedCrops.length,
+              total: filteredCrops.length,
+            })}
           </button>
         </div>
       )}
@@ -1179,10 +1222,12 @@ export function CropPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base font-bold text-neutral-900">
               <BarChart3 className="h-5 w-5 text-emerald-700" />
-              Explainable AI - Feature Importance
+              {t('crop.xaiTitle', 'Explainable AI - Feature Importance')}
             </CardTitle>
             <CardDescription>
-              How each regional factor influenced the ranking of the crops for {activeFarm?.name || 'your farm'}.
+              {t('crop.xaiSubtitle', 'How each regional factor influenced the ranking of the crops for {farm}.', {
+                farm: activeFarm?.name || t('crop.yourFarm', 'your farm'),
+              })}
             </CardDescription>
           </CardHeader>
           <CardContent>

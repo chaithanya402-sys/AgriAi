@@ -1,18 +1,20 @@
 import { useState, useRef, useEffect } from 'react'
 import { Bot, Send, Sparkles, ChevronDown, ChevronRight, Database, RotateCcw, MessageSquare } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/Card'
+import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Textarea } from '@/components/ui/Textarea'
 import { Alert } from '@/components/ui/Alert'
 import { ButtonLoader } from '@/components/ui/Loading'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { assistantApi } from '@/services/modules'
 
 interface AssistantResponse {
   answer: string
   context_summary?: string | Record<string, unknown>
   demo_mode?: boolean
+  language?: string
 }
 
 interface Message {
@@ -21,14 +23,15 @@ interface Message {
   content: string
   context_summary?: string | Record<string, unknown>
   demo_mode?: boolean
+  language?: string
 }
 
-const SUGGESTED_PROMPTS = [
-  'Why is my yield low?',
-  'Should I irrigate today?',
-  'What crops should I plant this season?',
-  'Is my soil healthy?',
-  'When should I harvest?',
+const SUGGESTED_PROMPT_CONFIGS = [
+  { key: 'assistant.promptYield', fallback: 'Why is my yield low?' },
+  { key: 'assistant.promptIrrigate', fallback: 'Should I irrigate today?' },
+  { key: 'assistant.promptCrops', fallback: 'What crops should I plant this season?' },
+  { key: 'assistant.promptSoil', fallback: 'Is my soil healthy?' },
+  { key: 'assistant.promptHarvest', fallback: 'When should I harvest?' },
 ]
 
 function formatContext(context: string | Record<string, unknown> | undefined): string {
@@ -43,6 +46,7 @@ function formatContext(context: string | Record<string, unknown> | undefined): s
 
 // Collapsible block showing the stored farm data the answer is grounded in
 function ContextBlock({ summary }: { summary: string | Record<string, unknown> }) {
+  const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   return (
     <div className="mt-2 overflow-hidden rounded-lg border border-neutral-200 bg-white">
@@ -54,7 +58,7 @@ function ContextBlock({ summary }: { summary: string | Record<string, unknown> }
       >
         {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         <Database className="h-3.5 w-3.5 text-brand" />
-        Farm data used for this answer
+        {t('assistant.dataUsed', 'Farm data used for this answer')}
       </button>
       {open && (
         <pre className="max-h-48 overflow-auto whitespace-pre-wrap border-t border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
@@ -67,6 +71,7 @@ function ContextBlock({ summary }: { summary: string | Record<string, unknown> }
 
 export function AssistantPage() {
   const { farms, currentFarm } = useFarm()
+  const { t, lang } = useLanguage()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -93,6 +98,7 @@ export function AssistantPage() {
       const res: AssistantResponse = await assistantApi.ask({
         farm_id: currentFarm.id,
         question: q,
+        language: lang,
       })
       setMessages((m) =>
         m.map((msg) =>
@@ -102,6 +108,7 @@ export function AssistantPage() {
                 content: res.answer,
                 context_summary: res.context_summary,
                 demo_mode: res.demo_mode,
+                language: res.language,
               }
             : msg,
         ),
@@ -138,23 +145,24 @@ export function AssistantPage() {
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-neutral-900">
           <Bot className="h-6 w-6 text-brand" />
-          AI Farm Assistant
+          {t('assistant.title', 'AI Farm Assistant')}
         </h1>
         <p className="text-sm text-neutral-500">
-          Ask questions about your farm — answers are grounded in your stored farm data.
+          {t('assistant.subtitle', 'Ask questions about your farm — answers are grounded in your stored farm data.')}
         </p>
       </div>
 
       {!currentFarm && (
         <Alert variant="warning">
-          Select a farm to ask the assistant. {farms.length === 0 && 'You need to create a farm first.'}
+          {t('assistant.selectFarmAlert', 'Select a farm to ask the assistant. You need to create a farm first.')}
+          {farms.length === 0 && ' You need to create a farm first.'}
         </Alert>
       )}
 
       {/* Active farm indicator */}
       {currentFarm && (
         <div className="flex items-center gap-2 text-sm text-neutral-600">
-          <Badge variant="primary">Active farm</Badge>
+          <Badge variant="primary">{t('assistant.activeFarm', 'Active farm')}</Badge>
           {(() => {
             const locText = currentFarm.district && currentFarm.state
               ? `${currentFarm.district}, ${currentFarm.state}`
@@ -174,10 +182,9 @@ export function AssistantPage() {
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-fresh-500/10 text-brand">
                 <MessageSquare className="h-7 w-7" />
               </div>
-              <h3 className="mt-4 font-semibold text-neutral-900">How can I help with your farm?</h3>
+              <h3 className="mt-4 font-semibold text-neutral-900">{t('assistant.greeting', 'How can I help with your farm?')}</h3>
               <p className="mt-1 max-w-md text-sm text-neutral-500">
-                Ask about soil health, irrigation, crops, yield, or market trends. I answer using
-                the data you have stored for this farm.
+                {t('assistant.emptyDesc', 'Ask about soil health, irrigation, crops, yield, or weather. I answer using the data you have stored for this farm.')}
               </p>
             </div>
           )}
@@ -214,7 +221,13 @@ export function AssistantPage() {
 
                   {!isTyping && msg.demo_mode && (
                     <div className="mt-2">
-                      <Badge variant="warning">Demo mode</Badge>
+                      <Badge variant="warning">{t('assistant.demoMode', 'Demo mode')}</Badge>
+                    </div>
+                  )}
+
+                  {!isTyping && !msg.demo_mode && msg.content && (
+                    <div className="mt-2">
+                      <Badge variant="success">{t('assistant.liveAi', 'Groq AI')}</Badge>
                     </div>
                   )}
 
@@ -228,18 +241,21 @@ export function AssistantPage() {
         {/* Suggested prompts */}
         {messages.length === 0 && (
           <div className="flex flex-wrap gap-2 border-t border-neutral-200 px-5 py-3">
-            {SUGGESTED_PROMPTS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                disabled={!currentFarm || loading}
-                onClick={() => ask(p)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 transition-colors hover:border-brand hover:text-brand disabled:opacity-50"
-              >
-                <Sparkles className="h-3 w-3 text-fresh-500" />
-                {p}
-              </button>
-            ))}
+            {SUGGESTED_PROMPT_CONFIGS.map((item) => {
+              const pText = t(item.key, item.fallback)
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  disabled={!currentFarm || loading}
+                  onClick={() => ask(pText)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 transition-colors hover:border-brand hover:text-brand disabled:opacity-50"
+                >
+                  <Sparkles className="h-3 w-3 text-fresh-500" />
+                  {pText}
+                </button>
+              )
+            })}
           </div>
         )}
 
@@ -258,14 +274,14 @@ export function AssistantPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about your farm… (Enter to send, Shift+Enter for newline)"
+              placeholder={t('assistant.placeholder', 'Ask a question in English, Telugu, or Hindi...')}
               rows={2}
               disabled={!currentFarm || loading}
               className="resize-none"
             />
             <div className="flex shrink-0 gap-2">
               {messages.length > 0 && (
-                <Button variant="ghost" size="icon" onClick={resetChat} title="New chat" disabled={loading}>
+                <Button variant="ghost" size="icon" onClick={resetChat} title={t('assistant.newChat', 'New chat')} disabled={loading}>
                   <RotateCcw className="h-4 w-4" />
                 </Button>
               )}
@@ -273,14 +289,14 @@ export function AssistantPage() {
                 onClick={handleSubmit}
                 disabled={!input.trim() || loading || !currentFarm}
                 size="icon"
-                title="Send"
+                title={t('assistant.send', 'Send')}
               >
                 {loading ? <ButtonLoader /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
           </div>
           <p className="mt-2 text-xs text-neutral-400">
-            Answers are generated from your farm's stored data. Always verify critical decisions.
+            {t('assistant.disclaimer', "Answers are generated from your farm's stored data. Always verify critical decisions.")}
           </p>
         </div>
       </Card>

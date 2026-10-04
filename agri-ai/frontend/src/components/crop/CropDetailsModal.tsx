@@ -40,9 +40,11 @@ import {
 } from 'recharts'
 import { formatNumber, formatCurrency, cn } from '@/lib/utils'
 import { getCropDetails, type CropDetailInfo } from '@/data/cropDetailsData'
-import type { CropOption, Farm } from '@/types'
+import { getCropImage } from '@/data/cropImages'
 import { FarmPlanModal } from './FarmPlanModal'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
+import type { CropOption, Farm } from '@/types'
 
 interface CropDetailsModalProps {
   crop: CropOption | null
@@ -82,6 +84,7 @@ export function CropDetailsModal({
   inputFeatures,
   onSelectCrop,
 }: CropDetailsModalProps) {
+  const { t, tCrop } = useLanguage()
   const [activeTab, setActiveTab] = useState<TabKey>('Overview')
   const [imgError, setImgError] = useState(false)
   const [podImgError, setPodImgError] = useState(false)
@@ -171,7 +174,10 @@ export function CropDetailsModal({
 
   const handleOpenPlan = () => {
     onSelectCrop(crop.crop)
-    setShowFarmPlanModal(true)
+    onClose()
+    navigate(`/dashboard/action-plan?crop=${encodeURIComponent(crop.crop)}`, {
+      state: { selectedCrop: crop.crop, cropName: crop.crop, justActivated: true },
+    })
   }
 
   return (
@@ -192,14 +198,14 @@ export function CropDetailsModal({
               className="group flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-emerald-700 transition-colors"
             >
               <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              <span>Crop Recommendations</span>
+              <span>{t('crop.recommendations', 'Crop Recommendations')}</span>
             </button>
 
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 text-xs text-neutral-600 bg-neutral-100/80 px-3 py-1.5 rounded-full border border-neutral-200/60 font-medium">
                 <MapPin className="h-3.5 w-3.5 text-emerald-600" />
                 <span>
-                  Farm: <strong className="text-neutral-900">{farmDisplayName}</strong>
+                  {t('nav.farm', 'Farm')}: <strong className="text-neutral-900">{farmDisplayName}</strong>
                 </span>
               </div>
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-800 text-white font-bold text-xs shadow-2xs">
@@ -224,18 +230,26 @@ export function CropDetailsModal({
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
                 {/* Large Hero Crop Image */}
                 <div className="md:col-span-5 relative h-56 sm:h-64 rounded-2xl overflow-hidden bg-neutral-100 border border-neutral-200/80 shadow-inner group">
-                  {!imgError ? (
-                    <img
-                      src={details.image}
-                      alt={crop.crop}
-                      onError={() => setImgError(true)}
-                      className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center bg-linear-to-br from-emerald-100 to-teal-50 text-6xl">
-                      {details.fallbackIcon}
-                    </div>
-                  )}
+                  {(() => {
+                    const displayImage = getCropImage(crop.crop) || details.image
+                    if (!imgError && displayImage) {
+                      return (
+                        <img
+                          key={crop.crop}
+                          src={displayImage}
+                          alt={crop.crop}
+                          onError={() => setImgError(true)}
+                          className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                        />
+                      )
+                    }
+                    return (
+                      <div className="h-full w-full flex flex-col items-center justify-center bg-neutral-100 text-neutral-400 p-4 text-center">
+                        <Sprout className="h-10 w-10 text-neutral-300 mb-2 stroke-[1.5]" />
+                        <span className="text-xs font-semibold text-neutral-500">Crop image unavailable</span>
+                      </div>
+                    )
+                  })()}
                   {/* Subtle Gradient Overlay */}
                   <div className="absolute inset-0 bg-linear-to-t from-black/25 via-transparent to-transparent pointer-events-none" />
                 </div>
@@ -247,16 +261,16 @@ export function CropDetailsModal({
                     <div className="flex flex-wrap items-center gap-2.5">
                       <Sprout className="h-6 w-6 text-[#2E7D32]" />
                       <h1 className="text-2xl sm:text-3xl font-extrabold text-[#17231A] tracking-tight">
-                        {details.displayName}
+                        {tCrop(crop.crop) || details.displayName}
                       </h1>
                       <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-[#EAF6EA] text-[#2E7D32] border border-[#2E7D32]/20">
                         <Check className="h-3 w-3 stroke-[3]" />
-                        Recommended
+                        {t('common.recommended', 'Recommended')}
                       </span>
                     </div>
 
                     <p className="mt-1 text-sm font-medium text-neutral-500">
-                      Best suited for your farm
+                      {t('crop.subtitle', 'Best suited for your farm')}
                     </p>
 
                     <div className="mt-2 flex items-center gap-1.5 text-xs text-neutral-600 font-medium">
@@ -297,7 +311,7 @@ export function CropDetailsModal({
                       </div>
 
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-neutral-700">Farm Match Score</p>
+                        <p className="text-xs font-bold text-neutral-700">{t('crop.matchScore', 'Farm Match Score')}</p>
                         <div className="mt-1 h-2 w-24 rounded-full bg-neutral-200 overflow-hidden">
                           <div
                             className="h-full rounded-full bg-[#2E7D32]"
@@ -393,19 +407,24 @@ export function CropDetailsModal({
             {/* 3. FOUR STREAMLINED TABS                                        */}
             {/* ============================================================== */}
             <div className="flex items-center gap-2 border-b border-neutral-200 pb-2 overflow-x-auto no-scrollbar">
-              {(['Overview', 'Soil & Climate', 'Performance', 'Farm Guide'] as TabKey[]).map((tab) => (
+              {([
+                { key: 'Overview' as TabKey, label: t('crop.tabs.overview', 'Overview') },
+                { key: 'Soil & Climate' as TabKey, label: t('crop.tabs.soilClimate', 'Soil & Climate') },
+                { key: 'Performance' as TabKey, label: t('crop.tabs.economics', 'Yield & Economics') },
+                { key: 'Farm Guide' as TabKey, label: t('crop.actionPlan', 'Farm Guide') },
+              ]).map((tab) => (
                 <button
-                  key={tab}
+                  key={tab.key}
                   type="button"
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => setActiveTab(tab.key)}
                   className={cn(
                     'px-5 py-2 text-sm font-semibold rounded-full transition-all whitespace-nowrap',
-                    activeTab === tab
+                    activeTab === tab.key
                       ? 'bg-[#123B22] text-white shadow-xs'
                       : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 bg-white border border-neutral-200/80'
                   )}
                 >
-                  {tab}
+                  {tab.label}
                 </button>
               ))}
             </div>
@@ -1027,7 +1046,7 @@ export function CropDetailsModal({
               className="flex items-center gap-1.5 px-4 py-2.5 text-xs sm:text-sm font-semibold text-neutral-700 bg-white border border-neutral-300 rounded-xl hover:bg-neutral-50 transition-colors shadow-2xs"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span>Back to Recommendations</span>
+              <span>{t('crop.recommendations', 'Back to Recommendations')}</span>
             </button>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -1036,7 +1055,7 @@ export function CropDetailsModal({
                 onClick={handleOpenPlan}
                 className="flex-1 sm:flex-initial px-5 py-2.5 text-xs sm:text-sm font-bold text-[#123B22] bg-[#EAF6EA] border border-[#2E7D32]/30 rounded-xl hover:bg-[#EAF6EA]/80 transition-colors shadow-2xs"
               >
-                View Action Plan →
+                {t('crop.actionPlan', 'View Action Plan')} →
               </button>
 
               <button
@@ -1052,12 +1071,12 @@ export function CropDetailsModal({
                 {selectedSuccess || isAlreadyActive ? (
                   <>
                     <CheckCheck className="h-4 w-4 animate-bounce text-emerald-300" />
-                    <span>{crop.crop} Active Crop</span>
+                    <span>{tCrop(crop.crop)} {t('farms.cropCurrent', 'Active Crop')}</span>
                   </>
                 ) : (
                   <>
                     <Sprout className="h-4 w-4" />
-                    <span>Activate Crop</span>
+                    <span>{t('common.select', 'Activate Crop')}</span>
                   </>
                 )}
               </button>

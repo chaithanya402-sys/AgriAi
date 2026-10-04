@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { farmApi } from '@/services/api'
 import { agriculturalDataService } from '@/services/agriculturalDataService'
 import { soilApi } from '@/services/modules'
@@ -55,6 +56,7 @@ const emptyField = {
 }
 
 export function FarmManagementPage() {
+  const { t } = useLanguage()
   const { farms, currentFarm, setCurrentFarm, refetch, loading } = useFarm()
   const { data: deleteResult, loading: deleting, run: runDelete } = useAsync<any>()
   const { data: createResult, loading: creating, run: runCreate } = useAsync<any>()
@@ -283,14 +285,14 @@ export function FarmManagementPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Farm Management</h1>
+          <h1 className="text-2xl font-bold text-neutral-900">{t('farms.title', 'Farm Management')}</h1>
           <p className="text-sm text-neutral-500">
-            Create, edit, and manage your farms and fields.
+            {t('farms.subtitle', 'Create, edit, and manage your farms and fields.')}
           </p>
         </div>
         <Button onClick={openCreateForm}>
           <Plus className="h-4 w-4" />
-          Add Farm
+          {t('farms.addFarm', 'Add Farm')}
         </Button>
       </div>
 

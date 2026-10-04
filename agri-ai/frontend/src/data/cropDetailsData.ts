@@ -1,4 +1,5 @@
 import { cropCatalog, normalizeCropName, getAllCatalogCrops, type CatalogCropItem } from './cropCatalog'
+import { getCropImage } from './cropImages'
 
 export type CropCategory =
   | 'Cereals'
@@ -425,7 +426,7 @@ export const CROP_DETAILS_MAP: Record<string, CropDetailInfo> = {
     name: 'Paddy',
     displayName: 'Paddy / Rice',
     category: 'Cereals',
-    image: 'https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?auto=format&fit=crop&w=800&q=80',
+    image: '/images/crops/rice.webp',
     fallbackIcon: '🌾',
     description:
       'Paddy is the primary staple cereal of India, grown extensively in wetlands, delta basins, and irrigated lowlands.',
@@ -3155,7 +3156,7 @@ export const CROP_DETAILS_MAP: Record<string, CropDetailInfo> = {
 /**
  * Returns clean CropDetailInfo for any requested crop with intelligent alias matching
  */
-export function getCropDetails(cropName: string): CropDetailInfo {
+function getRawCropDetails(cropName: string): CropDetailInfo {
   if (!cropName) return CROP_DETAILS_MAP.Soybean
 
   const clean = cropName.trim()
@@ -3252,6 +3253,15 @@ export function getCropDetails(cropName: string): CropDetailInfo {
 
   // Fallback to Soybean
   return CROP_DETAILS_MAP.Soybean
+}
+
+export function getCropDetails(cropName: string): CropDetailInfo {
+  const raw = getRawCropDetails(cropName)
+  const resolved = getCropImage(cropName) || getCropImage(raw.name) || getCropImage(raw.displayName)
+  return {
+    ...raw,
+    image: resolved || raw.image,
+  }
 }
 
 /**

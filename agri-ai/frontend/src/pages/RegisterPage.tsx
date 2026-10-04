@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Leaf } from 'lucide-react'
 import { useAuth } from '@/services/auth'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
@@ -10,6 +11,7 @@ import { ButtonLoader } from '@/components/ui/Loading'
 
 export function RegisterPage() {
   const { register } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
 
   const [form, setForm] = useState({
@@ -62,46 +64,46 @@ export function RegisterPage() {
             <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-brand text-white">
               <Leaf className="h-6 w-6" />
             </span>
-            <h1 className="text-2xl font-bold text-neutral-900">Create your account</h1>
-            <p className="mt-1 text-sm text-neutral-500">Start growing smarter with AgriAI</p>
+            <h1 className="text-2xl font-bold text-neutral-900">{t('auth.registerTitle', 'Create your account')}</h1>
+            <p className="mt-1 text-sm text-neutral-500">{t('auth.registerSubtitle', 'Start growing smarter with AgriAI')}</p>
           </div>
 
           {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="name">Full name</Label>
+              <Label htmlFor="name">{t('auth.nameLabel', 'Full name')}</Label>
               <Input id="name" required placeholder="Your name" value={form.name} onChange={update('name')} />
             </div>
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('auth.emailLabel', 'Email')}</Label>
               <Input id="email" type="email" required placeholder="you@example.com" value={form.email} onChange={update('email')} />
             </div>
             <div>
-              <Label htmlFor="phone">Phone (optional)</Label>
+              <Label htmlFor="phone">{t('profile.phone', 'Phone (optional)')}</Label>
               <Input id="phone" placeholder="+91 98765 43210" value={form.phone} onChange={update('phone')} />
             </div>
             <div>
-              <Label htmlFor="location">Location (optional)</Label>
+              <Label htmlFor="location">{t('profile.location', 'Location (optional)')}</Label>
               <Input id="location" placeholder="e.g. Andhra Pradesh, India" value={form.location} onChange={update('location')} />
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('auth.passwordLabel', 'Password')}</Label>
               <Input id="password" type="password" required placeholder="Min 6 characters" value={form.password} onChange={update('password')} />
             </div>
             <div>
-              <Label htmlFor="confirm">Confirm password</Label>
+              <Label htmlFor="confirm">{t('auth.passwordLabel', 'Confirm password')}</Label>
               <Input id="confirm" type="password" required placeholder="••••••••" value={form.confirm} onChange={update('confirm')} />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <ButtonLoader label="Creating account…" /> : 'Create account'}
+              {loading ? <ButtonLoader label={t('auth.signingUp', 'Creating account…')} /> : t('auth.signUpButton', 'Create account')}
             </Button>
           </form>
 
           <p className="mt-6 text-center text-sm text-neutral-500">
-            Already have an account?{' '}
+            {t('auth.haveAccount', 'Already have an account?')}{' '}
             <Link to="/login" className="font-medium text-brand hover:underline">
-              Log in
+              {t('auth.signInButton', 'Log in')}
             </Link>
           </p>
         </div>

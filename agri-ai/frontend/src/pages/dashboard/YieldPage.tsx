@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { yieldApi, soilApi } from '@/services/modules'
 import { useAsync } from '@/hooks/useAsync'
 import { useAgriculturalLocation } from '@/hooks/useAgriculturalLocation'
@@ -69,6 +70,7 @@ const DEFAULT_FEATURE_IMPORTANCE = [
 
 export function YieldPage() {
   const navigate = useNavigate()
+  const { t, tCrop } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const {
     farms,
@@ -281,7 +283,7 @@ export function YieldPage() {
         feature_importance: [],
         demo_mode: false,
         is_model_supported: false,
-        unsupported_message: 'Yield prediction model is not currently trained for this crop.',
+        unsupported_message: t('yield.unsupported', 'Yield prediction model is not currently trained for this crop.'),
       })
       setHasExecuted(true)
       setIsDirty(false)
@@ -377,13 +379,13 @@ export function YieldPage() {
               className="group mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-600 transition-colors hover:text-[#123B22]"
             >
               <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
-              <span>Back to Dashboard</span>
+              <span>{t('common.backToDashboard', 'Back to Dashboard')}</span>
             </button>
             <h1 className="text-2xl font-bold tracking-tight text-[#17231A] md:text-3xl">
-              Yield Prediction & Optimization
+              {t('yield.title', 'Yield Prediction & Optimization')}
             </h1>
             <p className="mt-0.5 text-xs sm:text-sm text-neutral-600 font-medium">
-              AI-powered crop yield analysis with smart recommendations to improve your production.
+              {t('yield.subtitle', 'AI-powered crop yield analysis with smart recommendations to improve your production.')}
             </p>
           </div>
         </div>
@@ -392,16 +394,16 @@ export function YieldPage() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200">
             <Sprout className="h-8 w-8" />
           </div>
-          <h3 className="mt-4 text-lg font-bold text-neutral-900">No active crop selected</h3>
+          <h3 className="mt-4 text-lg font-bold text-neutral-900">{t('crop.noActiveCrop', 'No active crop selected')}</h3>
           <p className="mx-auto mt-1.5 max-w-md text-xs sm:text-sm text-neutral-500 leading-relaxed">
-            Select and activate a recommended crop for your farm to view personalized yield prediction, nutrient gap analysis, and AI optimization.
+            {t('crop.noActiveCropDesc', 'Select and activate a recommended crop for your farm to view personalized yield prediction, nutrient gap analysis, and AI optimization.')}
           </p>
           <div className="mt-6 flex justify-center">
             <Button
               onClick={() => navigate('/dashboard/crop')}
               className="rounded-xl bg-[#123B22] text-xs sm:text-sm font-bold text-white hover:bg-[#0E2F1B] px-5 py-2.5 shadow-2xs flex items-center gap-2"
             >
-              <span>Go to Crop Recommendations</span>
+              <span>{t('crop.goToRecommendations', 'Go to Crop Recommendations')}</span>
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
@@ -449,7 +451,7 @@ export function YieldPage() {
             className="group mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-600 transition-colors hover:text-[#123B22]"
           >
             <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
-            <span>Back to Dashboard</span>
+            <span>{t('common.backToDashboard', 'Back to Dashboard')}</span>
           </button>
 
           <h1 className="text-2xl font-bold tracking-tight text-[#17231A] md:text-3xl">
@@ -470,7 +472,7 @@ export function YieldPage() {
           <div className="flex h-9 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 shadow-2xs">
             <Calendar className="h-3.5 w-3.5 text-emerald-700" />
             <span>
-              Last analysis: <strong>Today</strong>
+              {t('yield.lastAnalysis', 'Last analysis:')} <strong>{t('common.today', 'Today')}</strong>
             </span>
           </div>
         </div>
@@ -499,14 +501,14 @@ export function YieldPage() {
               <div className="space-y-2 flex-1 min-w-0">
                 <div className="flex items-center gap-2.5">
                   <h2 className="text-xl sm:text-2xl font-extrabold text-[#17231A] tracking-tight truncate">
-                    {displayCropName}
+                    {tCrop(displayCropName)}
                   </h2>
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/90 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 shrink-0">
-                    {activeSelectedCrop === currentCropName ? 'Active Farm Crop' : 'Selected for Analysis'}
+                    {activeSelectedCrop === currentCropName ? t('yield.activeFarmCrop', 'Active Farm Crop') : t('yield.selectedForAnalysis', 'Selected for Analysis')}
                   </span>
                   {!isSelectedCropSupported && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 shrink-0">
-                      Catalog Crop
+                      {t('crop.catalogCrop', 'Catalog Crop')}
                     </span>
                   )}
                 </div>
@@ -515,25 +517,25 @@ export function YieldPage() {
                   <div className="flex items-center gap-1.5">
                     <Home className="h-3.5 w-3.5 text-neutral-400" />
                     <span>
-                      Farm: <strong className="text-neutral-900 font-bold">{currentFarmName}</strong>
+                      {t('farms.farm', 'Farm')}: <strong className="text-neutral-900 font-bold">{currentFarmName}</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Grid className="h-3.5 w-3.5 text-neutral-400" />
                     <span>
-                      Area: <strong className="text-neutral-900 font-bold">{currentFarmArea} ha</strong>
+                      {t('yield.area', 'Area')}: <strong className="text-neutral-900 font-bold">{currentFarmArea} ha</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5 text-neutral-400" />
                     <span>
-                      Location: <strong className="text-neutral-900 font-bold">{currentFarmLocation}</strong>
+                      {t('farms.location', 'Location')}: <strong className="text-neutral-900 font-bold">{currentFarmLocation}</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Sprout className="h-3.5 w-3.5 text-emerald-700" />
                     <span>
-                      Crop Stage: <strong className="text-neutral-900 font-bold">{currentCropStage}</strong>
+                      {t('crop.stage', 'Crop Stage')}: <strong className="text-neutral-900 font-bold">{currentCropStage}</strong>
                     </span>
                   </div>
                 </div>
@@ -550,10 +552,10 @@ export function YieldPage() {
             </div>
             <div className="space-y-1">
               <h3 className="text-xs font-extrabold uppercase tracking-wide text-emerald-950">
-                From Crop Recommendation
+                {t('yield.fromRecommendation', 'From Crop Recommendation')}
               </h3>
               <p className="text-xs text-emerald-900/90 leading-relaxed pt-0.5">
-                This prediction is based on your crop recommendation, soil analysis and AI farm action plan.
+                {t('yield.fromRecDesc', 'This prediction is based on your crop recommendation, soil analysis and AI farm action plan.')}
               </p>
             </div>
           </div>
@@ -564,7 +566,7 @@ export function YieldPage() {
               onClick={() => setIsFarmPlanModalOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-xl bg-white/95 border border-emerald-200 px-3.5 py-1.5 text-xs font-bold text-emerald-900 hover:bg-white transition-colors shadow-2xs"
             >
-              <span>View in Action Plan</span>
+              <span>{t('yield.viewInActionPlan', 'View in Action Plan')}</span>
               <ArrowRight className="h-3.5 w-3.5 text-emerald-700" />
             </button>
           </div>
@@ -575,7 +577,7 @@ export function YieldPage() {
       {isDirty && (
         <Alert variant="warning" className="border-amber-300 bg-amber-50 text-amber-900">
           <AlertTriangle className="h-4 w-4 text-amber-700" />
-          <span>Prediction parameters changed. Click Predict Yield to generate a new prediction.</span>
+          <span>{t('yield.staleParams', 'Prediction parameters changed. Click Predict Yield to generate a new prediction.')}</span>
         </Alert>
       )}
 
@@ -608,10 +610,10 @@ export function YieldPage() {
               </div>
               <div>
                 <CardTitle className="text-base font-bold text-[#17231A]">
-                  Yield Prediction Parameters
+                  {t('yield.parametersTitle', 'Yield Prediction Parameters')}
                 </CardTitle>
                 <CardDescription className="text-xs text-neutral-500">
-                  Enter soil, weather and crop conditions to estimate expected yield.
+                  {t('yield.parametersDesc', 'Enter soil, weather and crop conditions to estimate expected yield.')}
                 </CardDescription>
               </div>
             </div>
@@ -622,7 +624,7 @@ export function YieldPage() {
               {/* Row 1: Crop, Farm, Area */}
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-neutral-600">Crop</Label>
+                  <Label className="text-[11px] font-semibold text-neutral-600">{t('yield.crop', 'Crop')}</Label>
                   <Select
                     value={form.crop}
                     onValueChange={(v) => {
@@ -639,13 +641,13 @@ export function YieldPage() {
                     </SelectTrigger>
                     <SelectContent className="max-h-72">
                       {/* Active crop at top */}
-                      <SelectItem value={currentCropName}>{currentCropName} (Active)</SelectItem>
+                      <SelectItem value={currentCropName}>{tCrop(currentCropName)} ({t('common.active', 'Active')})</SelectItem>
                       {getAllCatalogCrops()
                         .filter((c) => c.displayName !== currentCropName && c.name !== currentCropName)
                         .sort((a, b) => a.displayName.localeCompare(b.displayName))
                         .map((crop) => (
                           <SelectItem key={crop.id} value={crop.displayName}>
-                            {crop.displayName}
+                            {tCrop(crop.displayName)}
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -653,7 +655,7 @@ export function YieldPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-neutral-600">Farm</Label>
+                  <Label className="text-[11px] font-semibold text-neutral-600">{t('farms.farm', 'Farm')}</Label>
                   <Select
                     value={selectedFarmId?.toString() || activeFarm?.id?.toString() || '1'}
                     onValueChange={(v) => {
@@ -680,7 +682,7 @@ export function YieldPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-neutral-600">Area (ha)</Label>
+                  <Label className="text-[11px] font-semibold text-neutral-600">{t('yield.areaHa', 'Area (ha)')}</Label>
                   <Input
                     className="h-8.5 text-xs font-bold bg-neutral-50/60 border-neutral-200"
                     type="number"
@@ -695,7 +697,7 @@ export function YieldPage() {
               {/* Row 2: N, P, K */}
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-neutral-600">N (mg/kg)</Label>
+                  <Label className="text-[11px] font-semibold text-neutral-600">{t('yield.nitrogen', 'N (mg/kg)')}</Label>
                   <Input
                     className="h-8.5 text-xs font-semibold bg-neutral-50/60 border-neutral-200"
                     type="number"
@@ -706,7 +708,7 @@ export function YieldPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-neutral-600">P (mg/kg)</Label>
+                  <Label className="text-[11px] font-semibold text-neutral-600">{t('yield.phosphorus', 'P (mg/kg)')}</Label>
                   <Input
                     className="h-8.5 text-xs font-semibold bg-neutral-50/60 border-neutral-200"
                     type="number"
@@ -717,7 +719,7 @@ export function YieldPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-neutral-600">K (mg/kg)</Label>
+                  <Label className="text-[11px] font-semibold text-neutral-600">{t('yield.potassium', 'K (mg/kg)')}</Label>
                   <Input
                     className="h-8.5 text-xs font-semibold bg-neutral-50/60 border-neutral-200"
                     type="number"
@@ -732,7 +734,7 @@ export function YieldPage() {
               {/* Row 3: Temp, Humidity, pH */}
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-neutral-600">Temp (°C)</Label>
+                  <Label className="text-[11px] font-semibold text-neutral-600">{t('yield.temperature', 'Temp (°C)')}</Label>
                   <Input
                     className="h-8.5 text-xs font-semibold bg-neutral-50/60 border-neutral-200"
                     type="number"
@@ -743,7 +745,7 @@ export function YieldPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-neutral-600">Humidity (%)</Label>
+                  <Label className="text-[11px] font-semibold text-neutral-600">{t('yield.humidity', 'Humidity (%)')}</Label>
                   <Input
                     className="h-8.5 text-xs font-semibold bg-neutral-50/60 border-neutral-200"
                     type="number"
@@ -754,7 +756,7 @@ export function YieldPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-neutral-600">pH</Label>
+                  <Label className="text-[11px] font-semibold text-neutral-600">{t('yield.ph', 'pH')}</Label>
                   <Input
                     className="h-8.5 text-xs font-semibold bg-neutral-50/60 border-neutral-200"
                     type="number"
@@ -769,7 +771,7 @@ export function YieldPage() {
               {/* Row 4: Rainfall and Predict Yield Button */}
               <div className="grid grid-cols-3 gap-2 text-xs items-end pt-1">
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-neutral-600">Rainfall (mm)</Label>
+                  <Label className="text-[11px] font-semibold text-neutral-600">{t('yield.rainfall', 'Rainfall (mm)')}</Label>
                   <Input
                     className="h-8.5 text-xs font-semibold bg-neutral-50/60 border-neutral-200"
                     type="number"
@@ -787,7 +789,7 @@ export function YieldPage() {
                     className="h-8.5 w-full rounded-xl bg-[#123B22] text-xs font-bold text-white hover:bg-[#0E2F1B] px-4 shadow-2xs flex items-center justify-center gap-1.5"
                   >
                     <Sprout className="h-3.5 w-3.5" />
-                    <span>{loading ? <ButtonLoader label="Predicting yield..." /> : 'Predict Yield'}</span>
+                    <span>{loading ? <ButtonLoader label={t('yield.predictingYield', 'Predicting yield...')} /> : t('yield.predictYield', 'Predict Yield')}</span>
                   </Button>
                 </div>
               </div>
@@ -807,7 +809,7 @@ export function YieldPage() {
                   <Sprout className="h-4 w-4" />
                 </div>
                 <CardTitle className="text-sm font-bold text-[#17231A]">
-                  Predicted Yield
+                  {t('yield.prediction', 'Predicted Yield')}
                 </CardTitle>
               </div>
               <Info className="h-4 w-4 text-neutral-400" />
@@ -819,10 +821,10 @@ export function YieldPage() {
               <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-center my-auto">
                 <AlertTriangle className="h-6 w-6 text-amber-600 mx-auto mb-2" />
                 <p className="text-xs font-bold text-amber-900 leading-snug">
-                  Yield prediction model is not currently trained for this crop.
+                  {t('yield.unsupported', 'Yield prediction model is not currently trained for this crop.')}
                 </p>
                 <p className="text-[11px] text-amber-700 mt-1 font-medium">
-                  Agronomic requirements, soil suitability, and farming guidelines are available below.
+                  {t('yield.unsupportedDesc', 'Agronomic requirements, soil suitability, and farming guidelines are available below.')}
                 </p>
               </div>
             ) : (
@@ -831,13 +833,13 @@ export function YieldPage() {
                   <span className="text-4xl font-black text-[#17231A] tracking-tight">
                     {predictedYieldValue}
                   </span>
-                  <span className="text-sm font-bold text-neutral-500">tonnes/ha</span>
+                  <span className="text-sm font-bold text-neutral-500">{t('yield.tonnesHa', 'tonnes/ha')}</span>
                 </div>
                 <p className="text-xs text-neutral-500 mt-1 font-medium">
-                  Expected production for {form.area || currentFarmArea} hectares
+                  {t('yield.expectedProduction', 'Expected production for {area} hectares', { area: form.area || currentFarmArea })}
                 </p>
                 <p className="text-sm font-extrabold text-emerald-800 mt-0.5">
-                  ≈ {predictedTotal} tonnes total
+                  {t('yield.tonnesTotal', '≈ {total} tonnes total', { total: predictedTotal })}
                 </p>
               </div>
             )}
@@ -873,9 +875,9 @@ export function YieldPage() {
                 </div>
 
                 <div>
-                  <span className="text-xs font-extrabold text-[#17231A]">Confidence</span>
+                  <span className="text-xs font-extrabold text-[#17231A]">{t('yield.confidence', 'Confidence')}</span>
                   <p className="text-[10px] text-neutral-500 font-medium leading-tight">
-                    High confidence prediction
+                    {t('yield.highConfidence', 'High confidence prediction')}
                   </p>
                 </div>
               </div>
@@ -892,10 +894,10 @@ export function YieldPage() {
               </div>
               <div>
                 <CardTitle className="text-sm font-bold text-[#17231A]">
-                  What Influenced Your Prediction?
+                  {t('yield.whatInfluenced', 'What Influenced Your Prediction?')}
                 </CardTitle>
                 <CardDescription className="text-[11px] text-neutral-500 leading-tight">
-                  These factors had the greatest influence on the current yield prediction.
+                  {t('yield.whatInfluencedDesc', 'These factors had the greatest influence on the current yield prediction.')}
                 </CardDescription>
               </div>
             </div>
@@ -933,10 +935,10 @@ export function YieldPage() {
           <Wheat className="h-7 w-7" />
         </div>
         <h3 className="mt-4 text-lg font-bold text-neutral-900">
-          Ready for yield prediction
+          {t('yield.readyTitle', 'Ready for yield prediction')}
         </h3>
         <p className="mx-auto mt-1.5 max-w-md text-xs sm:text-sm text-neutral-500 leading-relaxed">
-          Review the crop, farm and environmental parameters, then click Predict Yield.
+          {t('yield.readyDesc', 'Review the crop, farm and environmental parameters, then click Predict Yield.')}
         </p>
       </Card>
     )}
@@ -957,16 +959,16 @@ export function YieldPage() {
               </div>
               <div>
                 <CardTitle className="text-base font-bold text-[#17231A]">
-                  AI Yield Optimization
+                  {t('yield.optimizationTitle', 'AI Yield Optimization')}
                 </CardTitle>
                 <CardDescription className="text-xs text-neutral-500">
-                  Here are the key areas to improve your {currentRawCrop} management and optimize production.
+                  {t('yield.optimizationDesc', 'Here are the key areas to improve your {crop} management and optimize production.', { crop: tCrop(currentRawCrop) })}
                 </CardDescription>
               </div>
             </div>
 
             <span className="self-start sm:self-auto inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-800 border border-emerald-200">
-              ↗ Potential improvement: 15–25%
+              {t('yield.potentialImprovement', '↗ Potential improvement: 15–25%')}
             </span>
           </div>
         </CardHeader>
@@ -981,10 +983,10 @@ export function YieldPage() {
                     <Sprout className="h-4 w-4" />
                   </div>
                   <span className="rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-extrabold text-rose-600 border border-rose-200">
-                    High Priority
+                    {t('common.highPriority', 'High Priority')}
                   </span>
                 </div>
-                <h4 className="text-sm font-bold text-[#17231A]">Nutrient Management</h4>
+                <h4 className="text-sm font-bold text-[#17231A]">{t('yield.nutrientMgmt', 'Nutrient Management')}</h4>
                 <p className="text-xs text-neutral-600 leading-relaxed font-medium">
                   {fertilizerPlan.shortAiExplanation ||
                     `Optimize nitrogen and potassium balance for robust ${currentCropName} canopy development.`}
@@ -996,7 +998,7 @@ export function YieldPage() {
                 onClick={() => setSearchParams({ view: 'optimize' })}
                 className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 group-hover:text-emerald-950 pt-1 cursor-pointer"
               >
-                <span>View Fertilizer Plan</span>
+                <span>{t('yield.viewFertilizerPlan', 'View Fertilizer Plan')}</span>
                 <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1 text-emerald-700" />
               </button>
             </div>
@@ -1009,10 +1011,10 @@ export function YieldPage() {
                     <Droplets className="h-4 w-4" />
                   </div>
                   <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-extrabold text-amber-700 border border-amber-200">
-                    Medium Priority
+                    {t('common.mediumPriority', 'Medium Priority')}
                   </span>
                 </div>
-                <h4 className="text-sm font-bold text-[#17231A]">Irrigation Optimization</h4>
+                <h4 className="text-sm font-bold text-[#17231A]">{t('yield.irrigationOpt', 'Irrigation Optimization')}</h4>
                 <p className="text-xs text-neutral-600 leading-relaxed font-medium">
                   Monitor rainfall and adjust irrigation during critical vegetative and flowering stages.
                 </p>
@@ -1023,7 +1025,7 @@ export function YieldPage() {
                 onClick={() => navigate('/dashboard/irrigation')}
                 className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 hover:text-emerald-950 pt-1"
               >
-                <span>View Irrigation Plan</span>
+                <span>{t('yield.viewIrrigationPlan', 'View Irrigation Plan')}</span>
                 <ArrowRight className="h-3.5 w-3.5 text-emerald-700" />
               </button>
             </div>
@@ -1036,10 +1038,10 @@ export function YieldPage() {
                     <FlaskConical className="h-4 w-4" />
                   </div>
                   <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700 border border-emerald-200">
-                    Low Priority
+                    {t('common.lowPriority', 'Low Priority')}
                   </span>
                 </div>
-                <h4 className="text-sm font-bold text-[#17231A]">Soil pH Management</h4>
+                <h4 className="text-sm font-bold text-[#17231A]">{t('yield.soilPhMgmt', 'Soil pH Management')}</h4>
                 <p className="text-xs text-neutral-600 leading-relaxed font-medium">
                   pH is within target range ({cropDetails.soilRequirements.phRange}). Keep it stable with organic matter.
                 </p>
@@ -1050,7 +1052,7 @@ export function YieldPage() {
                 onClick={() => navigate('/dashboard/soil')}
                 className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 hover:text-emerald-950 pt-1"
               >
-                <span>View Soil Plan</span>
+                <span>{t('yield.viewSoilPlan', 'View Soil Plan')}</span>
                 <ArrowRight className="h-3.5 w-3.5 text-emerald-700" />
               </button>
             </div>
@@ -1063,10 +1065,10 @@ export function YieldPage() {
                     <CloudSun className="h-4 w-4" />
                   </div>
                   <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-extrabold text-amber-700 border border-amber-200">
-                    Medium Priority
+                    {t('common.mediumPriority', 'Medium Priority')}
                   </span>
                 </div>
-                <h4 className="text-sm font-bold text-[#17231A]">Weather Awareness</h4>
+                <h4 className="text-sm font-bold text-[#17231A]">{t('yield.weatherAwareness', 'Weather Awareness')}</h4>
                 <p className="text-xs text-neutral-600 leading-relaxed font-medium">
                   Track rainfall and humidity during {activeCrop.cropStage || 'vegetative stage'} to manage fungal risk.
                 </p>
@@ -1077,7 +1079,7 @@ export function YieldPage() {
                 onClick={() => navigate('/dashboard/weather')}
                 className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 hover:text-emerald-950 pt-1"
               >
-                <span>View Weather Insights</span>
+                <span>{t('yield.viewWeatherInsights', 'View Weather Insights')}</span>
                 <ArrowRight className="h-3.5 w-3.5 text-emerald-700" />
               </button>
             </div>
@@ -1097,7 +1099,7 @@ export function YieldPage() {
                 <Leaf className="h-5 w-5" />
               </div>
               <CardTitle className="text-base font-bold text-[#17231A]">
-                AI Fertilizer Insight
+                {t('yield.fertilizerInsight', 'AI Fertilizer Insight')}
               </CardTitle>
             </div>
           </CardHeader>
@@ -1122,10 +1124,10 @@ export function YieldPage() {
                 <Target className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" />
                 <div>
                   <span className="text-xs font-extrabold text-emerald-950">
-                    Key Recommendation
+                    {t('yield.keyRecommendation', 'Key Recommendation')}
                   </span>
                   <p className="text-xs text-emerald-900/90 font-medium">
-                    Follow the recommended fertilizer doses and schedule generated from your soil analysis.
+                    {t('yield.keyRecDesc', 'Follow the recommended fertilizer doses and schedule generated from your soil analysis.')}
                   </p>
                 </div>
               </div>
@@ -1134,7 +1136,7 @@ export function YieldPage() {
                 onClick={() => setIsFarmPlanModalOpen(true)}
                 className="shrink-0 rounded-xl bg-[#123B22] text-xs font-bold text-white hover:bg-[#0E2F1B] shadow-2xs"
               >
-                <span>View Full Crop Action Plan</span>
+                <span>{t('yield.viewFullPlan', 'View Full Crop Action Plan')}</span>
                 <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
               </Button>
             </div>
@@ -1150,10 +1152,10 @@ export function YieldPage() {
               </div>
               <div>
                 <CardTitle className="text-sm font-bold text-[#17231A]">
-                  Quick Actions
+                  {t('dashboard.quickActions', 'Quick Actions')}
                 </CardTitle>
                 <CardDescription className="text-[11px] text-neutral-500">
-                  Access detailed plans for better yield optimization.
+                  {t('yield.quickActionsDesc', 'Access detailed plans for better yield optimization.')}
                 </CardDescription>
               </div>
             </div>
@@ -1168,7 +1170,7 @@ export function YieldPage() {
               >
                 <div className="flex items-center gap-1.5 truncate">
                   <FlaskConical className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
-                  <span className="truncate">Fertilizer Plan</span>
+                  <span className="truncate">{t('nav.fertilizer', 'Fertilizer Plan')}</span>
                 </div>
                 <ArrowRight className="h-3 w-3 text-neutral-400 shrink-0" />
               </button>
@@ -1180,7 +1182,7 @@ export function YieldPage() {
               >
                 <div className="flex items-center gap-1.5 truncate">
                   <Droplets className="h-3.5 w-3.5 text-teal-700 shrink-0" />
-                  <span className="truncate">Irrigation Plan</span>
+                  <span className="truncate">{t('nav.irrigation', 'Irrigation Plan')}</span>
                 </div>
                 <ArrowRight className="h-3 w-3 text-neutral-400 shrink-0" />
               </button>
@@ -1192,7 +1194,7 @@ export function YieldPage() {
               >
                 <div className="flex items-center gap-1.5 truncate">
                   <Sprout className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
-                  <span className="truncate">Crop Management</span>
+                  <span className="truncate">{t('yield.cropMgmt', 'Crop Management')}</span>
                 </div>
                 <ArrowRight className="h-3 w-3 text-neutral-400 shrink-0" />
               </button>
@@ -1204,7 +1206,7 @@ export function YieldPage() {
               >
                 <div className="flex items-center gap-1.5 truncate">
                   <CloudSun className="h-3.5 w-3.5 text-amber-700 shrink-0" />
-                  <span className="truncate">Weather Insights</span>
+                  <span className="truncate">{t('nav.weather', 'Weather Insights')}</span>
                 </div>
                 <ArrowRight className="h-3 w-3 text-neutral-400 shrink-0" />
               </button>

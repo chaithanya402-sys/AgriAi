@@ -5,6 +5,7 @@ import {
   normalizeCropName,
   isModelSupportedCrop,
   cropImages,
+  getCropImage,
   CatalogCropItem,
 } from '@/data/cropCatalog'
 import { useFarm } from '@/components/farm/FarmContext'
@@ -21,11 +22,13 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
+import { useLanguage } from '@/i18n/LanguageContext'
 
 export function CropDetailPage() {
   const { cropId } = useParams<{ cropId: string }>()
   const navigate = useNavigate()
   const { farms, selectedFarmId, currentFarm, activeCrop, activateCropPlan } = useFarm()
+  const { t, tCrop } = useLanguage()
   const [activationToast, setActivationToast] = useState<string | null>(null)
 
   const activeFarm = farms.find((f) => f.id === selectedFarmId) || currentFarm || farms[0] || null
@@ -33,7 +36,13 @@ export function CropDetailPage() {
   const canonicalId = normalizeCropName(cropId || 'rice')
   const crop: CatalogCropItem = cropCatalog[canonicalId] || cropCatalog['rice']
   const isTrained = isModelSupportedCrop(canonicalId)
-  const heroImage = crop.image || cropImages[canonicalId] || '/crops/ragi.jpg'
+  const heroImage =
+    getCropImage(cropId) ||
+    getCropImage(crop.displayName || crop.name) ||
+    getCropImage(canonicalId) ||
+    crop.image ||
+    cropImages[canonicalId] ||
+    ''
 
   const isActive =
     activeCrop &&
@@ -84,7 +93,7 @@ export function CropDetailPage() {
           className="inline-flex items-center gap-2 text-sm font-bold text-neutral-600 hover:text-neutral-900 transition-colors cursor-pointer bg-white px-3.5 py-1.5 rounded-xl border border-neutral-200 shadow-2xs"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Back</span>
+          <span>{t('common.back', 'Back')}</span>
         </button>
 
         <div className="flex items-center gap-2">
@@ -92,13 +101,13 @@ export function CropDetailPage() {
             to="/dashboard/crop"
             className="text-xs font-bold text-[#123B22] bg-[#E8F5E9] hover:bg-[#C8E6C9] px-3 py-1.5 rounded-xl border border-[#C8E6C9] transition-colors"
           >
-            All Crops Catalog
+            {t('crop.allCrops', 'All Crops Catalog')}
           </Link>
           <Link
             to="/dashboard/yield"
             className="text-xs font-bold text-neutral-700 bg-white hover:bg-neutral-50 px-3 py-1.5 rounded-xl border border-neutral-200 transition-colors"
           >
-            Yield Predictor
+            {t('nav.yield', 'Yield Predictor')}
           </Link>
         </div>
       </div>
@@ -123,16 +132,21 @@ export function CropDetailPage() {
       <div className="rounded-3xl border border-neutral-200/90 bg-white overflow-hidden shadow-xs">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 items-stretch">
           {/* Real Agricultural Photograph */}
-          <div className="lg:col-span-5 relative min-h-[260px] sm:min-h-[320px] bg-neutral-100">
-            <img
-              src={heroImage}
-              alt={crop.name}
-              className="h-full w-full object-cover"
-              onError={(e) => {
-                ;(e.target as HTMLImageElement).src =
-                  'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=800&q=80'
-              }}
-            />
+          <div className="lg:col-span-5 relative min-h-[260px] sm:min-h-[320px] bg-neutral-100 flex items-center justify-center">
+            {heroImage ? (
+              <img
+                src={heroImage}
+                alt={crop.name}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  ;(e.target as HTMLElement).style.display = 'none'
+                }}
+              />
+            ) : null}
+            <div className="flex flex-col items-center justify-center text-neutral-400 p-6 text-center">
+              <Sprout className="h-12 w-12 text-neutral-300 mb-2 stroke-[1.5]" />
+              <span className="text-xs font-semibold text-neutral-500">Crop image unavailable</span>
+            </div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
             <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white text-xs font-bold">
               <span className="bg-black/50 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
@@ -141,7 +155,7 @@ export function CropDetailPage() {
               {isActive && (
                 <span className="bg-emerald-600 text-white px-3 py-1 rounded-full shadow-xs flex items-center gap-1">
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  Active Crop
+                  {t('farms.cropCurrent', 'Active Crop')}
                 </span>
               )}
             </div>
@@ -170,7 +184,7 @@ export function CropDetailPage() {
 
               <div>
                 <h1 className="text-2xl sm:text-4xl font-extrabold text-[#17231A] tracking-tight">
-                  {crop.displayName || crop.name}
+                  {tCrop(canonicalId) || crop.displayName || crop.name}
                 </h1>
                 {crop.aliases && crop.aliases.length > 1 && (
                   <p className="text-xs text-neutral-500 font-medium mt-1">

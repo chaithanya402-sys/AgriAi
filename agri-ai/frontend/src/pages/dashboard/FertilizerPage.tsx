@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -43,6 +44,7 @@ import {
 
 export function FertilizerPage() {
   const navigate = useNavigate()
+  const { t, tCrop } = useLanguage()
   const [searchParams] = useSearchParams()
   const { farms, selectedFarmId, setSelectedFarmId, currentFarm, activeCrop } = useFarm()
 
@@ -295,14 +297,14 @@ export function FertilizerPage() {
             className="group mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-600 transition-colors hover:text-[#123B22]"
           >
             <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
-            <span>Back to Crop Action Plan</span>
+            <span>{t('common.back', 'Back to Crop Action Plan')}</span>
           </button>
 
           <h1 className="text-2xl font-bold tracking-tight text-[#17231A] md:text-3xl">
-            Fertilizer Plan
+            {t('fertilizer.title', 'Fertilizer Plan')}
           </h1>
           <p className="mt-0.5 text-xs sm:text-sm text-neutral-500 font-medium">
-            Generated from your Crop Recommendation and AI Farm Action Plan
+            {t('fertilizer.subtitle', 'Generated from your Crop Recommendation and AI Farm Action Plan')}
           </p>
         </div>
 
@@ -351,12 +353,12 @@ export function FertilizerPage() {
               <div className="space-y-2.5 flex-1 min-w-0">
                 <div>
                   <h2 className="text-xl sm:text-2xl font-extrabold text-[#17231A] tracking-tight truncate">
-                    {plan.cropDisplayName}
+                    {tCrop(plan.cropDisplayName)}
                   </h2>
                   <div className="mt-1">
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/90 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
                       <CheckCircle2 className="h-3 w-3 text-emerald-700" />
-                      Active Crop
+                      {t('common.active', 'Active Crop')}
                     </span>
                   </div>
                 </div>
@@ -366,25 +368,25 @@ export function FertilizerPage() {
                   <div className="flex items-center gap-1.5">
                     <Home className="h-3.5 w-3.5 text-neutral-400" />
                     <span>
-                      Farm: <strong className="text-neutral-900 font-bold">{farmDisplayName}</strong>
+                      {t('farms.farm', 'Farm')}: <strong className="text-neutral-900 font-bold">{farmDisplayName}</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Grid className="h-3.5 w-3.5 text-neutral-400" />
                     <span>
-                      Area: <strong className="text-neutral-900 font-bold">{farmArea}</strong>
+                      {t('yield.area', 'Area')}: <strong className="text-neutral-900 font-bold">{farmArea}</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5 text-neutral-400" />
                     <span>
-                      Location: <strong className="text-neutral-900 font-bold">{farmLocation}</strong>
+                      {t('farms.location', 'Location')}: <strong className="text-neutral-900 font-bold">{farmLocation}</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Sprout className="h-3.5 w-3.5 text-emerald-700" />
                     <span>
-                      Crop Stage: <strong className="text-neutral-900 font-bold">{currentStage}</strong>
+                      {t('crop.stage', 'Crop Stage')}: <strong className="text-neutral-900 font-bold">{currentStage}</strong>
                     </span>
                   </div>
                 </div>
@@ -401,7 +403,7 @@ export function FertilizerPage() {
             </div>
             <div className="space-y-1">
               <h3 className="text-xs font-extrabold uppercase tracking-wide text-emerald-950">
-                From Crop Recommendation
+                {t('yield.fromRecommendation', 'From Crop Recommendation')}
               </h3>
               <p className="text-xs text-emerald-900/90 leading-relaxed">
                 {plan.aiRecommendationText}
@@ -415,7 +417,7 @@ export function FertilizerPage() {
               onClick={() => setIsFarmPlanModalOpen(true)}
               className="inline-flex items-center gap-1 rounded-xl bg-white/90 border border-emerald-200 px-3 py-1.5 text-xs font-bold text-emerald-900 hover:bg-white transition-colors shadow-2xs"
             >
-              <span>View in Action Plan</span>
+              <span>{t('yield.viewInActionPlan', 'View in Action Plan')}</span>
               <ArrowRight className="h-3.5 w-3.5 text-emerald-700" />
             </button>
           </div>
@@ -427,7 +429,7 @@ export function FertilizerPage() {
       {/* ============================================================== */}
       <div className="space-y-2.5">
         <div>
-          <h3 className="text-sm font-extrabold text-[#17231A]">Soil Nutrient Status</h3>
+          <h3 className="text-sm font-extrabold text-[#17231A]">{t('fertilizer.currentNpk', 'Soil Nutrient Status')}</h3>
           <p className="text-xs text-neutral-500 font-medium">
             Current levels vs. recommended levels for your crop
           </p>

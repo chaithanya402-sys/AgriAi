@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { FarmPlanModal } from '@/components/crop/FarmPlanModal'
@@ -166,6 +167,7 @@ export interface YieldOptimizationPageProps {
 export function YieldOptimizationPage({ onBack }: YieldOptimizationPageProps) {
   const navigate = useNavigate()
   const { currentFarm, activeCrop } = useFarm()
+  const { t, tCrop } = useLanguage()
 
   const handleBack = () => {
     if (onBack) {
@@ -266,19 +268,19 @@ export function YieldOptimizationPage({ onBack }: YieldOptimizationPageProps) {
             className="group mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-600 transition-colors hover:text-[#123B22]"
           >
             <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
-            <span>Back to Yield Optimization</span>
+            <span>{t('common.back', 'Back')}</span>
           </button>
 
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight text-[#17231A] md:text-3xl">
-              AI Yield Optimization
+              {t('yield.optimizationTitle', 'AI Yield Optimization')}
             </h1>
             <span className="hidden sm:inline-flex items-center rounded-full bg-emerald-100/80 px-2.5 py-0.5 text-xs font-bold text-emerald-900 border border-emerald-200">
-              Nutrient Management
+              {t('yield.nutrientMgmt', 'Nutrient Management')}
             </span>
           </div>
           <p className="mt-1 text-xs sm:text-sm text-neutral-600 font-medium">
-            Optimize crop nutrition based on soil conditions, crop requirements and AI yield analysis.
+            {t('yield.parametersDesc', 'Optimize crop nutrition based on soil conditions, crop requirements and AI yield analysis.')}
           </p>
         </div>
 
@@ -292,7 +294,7 @@ export function YieldOptimizationPage({ onBack }: YieldOptimizationPageProps) {
           <div className="flex h-9 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 shadow-2xs">
             <Calendar className="h-3.5 w-3.5 text-emerald-700" />
             <span>
-              Last analysis: <strong>Today</strong>
+              {t('yield.lastAnalysis', 'Last analysis:')} <strong>{t('common.today', 'Today')}</strong>
             </span>
           </div>
         </div>
@@ -321,10 +323,10 @@ export function YieldOptimizationPage({ onBack }: YieldOptimizationPageProps) {
               <div className="space-y-2 flex-1 min-w-0">
                 <div className="flex items-center gap-2.5">
                   <h2 className="text-xl sm:text-2xl font-extrabold text-[#17231A] tracking-tight truncate">
-                    {cropDisplayName}
+                    {tCrop(cropDisplayName)}
                   </h2>
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/90 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 shrink-0">
-                    Selected Crop
+                    {t('crop.selectedCrop', 'Selected Crop')}
                   </span>
                 </div>
 
@@ -332,25 +334,25 @@ export function YieldOptimizationPage({ onBack }: YieldOptimizationPageProps) {
                   <div className="flex items-center gap-1.5">
                     <Home className="h-3.5 w-3.5 text-neutral-400" />
                     <span>
-                      Farm: <strong className="text-neutral-900 font-bold">{farmName}</strong>
+                      {t('farms.farm', 'Farm')}: <strong className="text-neutral-900 font-bold">{farmName}</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Grid className="h-3.5 w-3.5 text-neutral-400" />
                     <span>
-                      Area: <strong className="text-neutral-900 font-bold">{farmArea}</strong>
+                      {t('yield.area', 'Area')}: <strong className="text-neutral-900 font-bold">{farmArea}</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5 text-neutral-400" />
                     <span>
-                      Location: <strong className="text-neutral-900 font-bold">{farmLocation}</strong>
+                      {t('farms.location', 'Location')}: <strong className="text-neutral-900 font-bold">{farmLocation}</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Sprout className="h-3.5 w-3.5 text-emerald-700" />
                     <span>
-                      Crop Stage: <strong className="text-neutral-900 font-bold">{cropStage}</strong>
+                      {t('crop.stage', 'Crop Stage')}: <strong className="text-neutral-900 font-bold">{cropStage}</strong>
                     </span>
                   </div>
                 </div>
@@ -368,11 +370,11 @@ export function YieldOptimizationPage({ onBack }: YieldOptimizationPageProps) {
             <div className="space-y-1">
               <div className="flex items-center gap-1.5">
                 <span className="inline-flex items-center rounded-full bg-emerald-100/80 px-2 py-0.2 text-[10px] font-bold text-emerald-900">
-                  From Crop Recommendation
+                  {t('yield.fromRecommendation', 'From Crop Recommendation')}
                 </span>
               </div>
               <p className="text-xs text-emerald-900/90 leading-relaxed pt-0.5">
-                This nutrient plan is generated from your crop recommendation, soil analysis and AI farm action plan.
+                {t('yield.fromRecDesc', 'This prediction is based on your crop recommendation, soil analysis and AI farm action plan.')}
               </p>
             </div>
           </div>
@@ -383,7 +385,7 @@ export function YieldOptimizationPage({ onBack }: YieldOptimizationPageProps) {
               onClick={() => setIsFarmPlanModalOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-xl bg-white/95 border border-emerald-200 px-3.5 py-1.5 text-xs font-bold text-emerald-900 hover:bg-white transition-colors shadow-2xs"
             >
-              <span>View in Action Plan</span>
+              <span>{t('yield.viewInActionPlan', 'View in Action Plan')}</span>
               <ArrowRight className="h-3.5 w-3.5 text-emerald-700" />
             </button>
           </div>

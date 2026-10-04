@@ -4,6 +4,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { profitApi } from '@/services/modules'
 import { useAsync } from '@/hooks/useAsync'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -45,6 +46,7 @@ function formatField(label: string): string {
 
 export function ProfitPage() {
   const { currentFarm } = useFarm()
+  const { t, tCrop } = useLanguage()
   const { data: result, loading, error, run } = useAsync<ProfitResult>()
 
   const [form, setForm] = useState({
@@ -87,7 +89,7 @@ export function ProfitPage() {
   if (!currentFarm) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-neutral-900">Profit Calculator</h1>
+        <h1 className="text-2xl font-bold text-neutral-900">{t('profit.title', 'Profit Calculator')}</h1>
         <EmptyState
           title="No farm selected"
           description="Please create or select a farm from the Farm Management page before calculating profit."
@@ -131,9 +133,9 @@ export function ProfitPage() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-neutral-900">Profit Calculator</h1>
+        <h1 className="text-2xl font-bold text-neutral-900">{t('profit.title', 'Profit Calculator')}</h1>
         <p className="text-sm text-neutral-500">
-          Analyze crop profitability with detailed cost breakdown and revenue projections
+          {t('profit.subtitle', 'Analyze crop profitability with detailed cost breakdown and revenue projections')}
         </p>
       </div>
 
@@ -164,7 +166,7 @@ export function ProfitPage() {
                       <SelectContent>
                         {CROP_OPTIONS.map((crop) => (
                           <SelectItem key={crop} value={crop}>
-                            {crop}
+                            {tCrop(crop)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -243,7 +245,7 @@ export function ProfitPage() {
           </CardContent>
           <CardFooter>
             <Button type="submit" disabled={loading || !form.crop}>
-              {loading ? <ButtonLoader label="Calculating..." /> : 'Calculate Profit'}
+              {loading ? <ButtonLoader label={t('profit.calculating', 'Calculating...')} /> : t('profit.calculateProfit', 'Calculate Profit')}
             </Button>
           </CardFooter>
         </form>

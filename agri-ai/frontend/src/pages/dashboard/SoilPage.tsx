@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { soilApi, FarmSoilData } from '@/services/modules'
 import { useAsync } from '@/hooks/useAsync'
 import { Button } from '@/components/ui/Button'
@@ -50,6 +51,7 @@ const statusConfig: Record<
 const farmSoilCache = new Map<number, FarmSoilData>()
 
 export function SoilPage() {
+  const { t } = useLanguage()
   const { farms, selectedFarmId, setSelectedFarmId, currentFarm, activeLocation, loading: farmsLoading } = useFarm()
   const { data: analyzeResult, loading: analyzing, error: analyzeError, run } = useAsync<SoilAnalysisResult & { demo_mode?: boolean }>()
 
@@ -246,11 +248,11 @@ export function SoilPage() {
   if (!farms.length) {
     return (
       <EmptyState
-        title="No farms found"
-        description="Create a farm first to run soil analysis."
+        title={t('dashboard.emptyTitle', 'No farms found')}
+        description={t('soil.emptyDesc', 'Create a farm first to run soil analysis.')}
         action={
           <Button onClick={() => (window.location.href = '/dashboard/farms')}>
-            Create Farm
+            {t('dashboard.createFirstFarm', 'Create Farm')}
           </Button>
         }
       />
@@ -263,9 +265,9 @@ export function SoilPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Soil Health Analysis</h1>
+          <h1 className="text-2xl font-bold text-neutral-900">{t('soil.title', 'Soil Health Analysis')}</h1>
           <p className="text-sm text-neutral-500">
-            Analyze soil composition and get actionable recommendations.
+            {t('soil.subtitle', 'Analyze soil composition and get actionable recommendations.')}
           </p>
         </div>
         {soilData?.source && (
@@ -281,17 +283,17 @@ export function SoilPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FlaskConical className="h-5 w-5 text-brand" />
-            Soil Parameters
+            {t('soil.inputParams', 'Soil Parameters')}
           </CardTitle>
           <CardDescription>
             {(() => {
               const state = (activeLocation.farmId === activeFarm?.id && activeLocation.state) || activeFarm?.state
               const district = (activeLocation.farmId === activeFarm?.id && activeLocation.district) || activeFarm?.district
-              if (district && state) return `Location: ${district}, ${state}`
+              if (district && state) return `${t('dashboard.savedLocation', 'Location')}: ${district}, ${state}`
               if (activeFarm?.location && !/^\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*$/.test(activeFarm.location) && !/lat|lon|coord/i.test(activeFarm.location)) {
-                return `Location: ${activeFarm.location}`
+                return `${t('dashboard.savedLocation', 'Location')}: ${activeFarm.location}`
               }
-              return activeFarm ? 'Location: —' : 'Enter soil test values for analysis.'
+              return activeFarm ? `${t('dashboard.savedLocation', 'Location')}: —` : t('soil.readyDesc', 'Enter soil test values for analysis.')
             })()}
           </CardDescription>
         </CardHeader>
@@ -300,13 +302,13 @@ export function SoilPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {/* Farm Selector */}
               <div className="space-y-1.5">
-                <Label>Farm</Label>
+                <Label>{t('farms.farm', 'Farm')}</Label>
                 <Select
                   value={selectedFarmId?.toString() || activeFarm?.id?.toString() || ''}
                   onValueChange={handleFarmSelect}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select farm" />
+                    <SelectValue placeholder={t('crop.selectFarm', 'Select farm')} />
                   </SelectTrigger>
                   <SelectContent>
                     {farms.map((farm) => (
@@ -319,7 +321,7 @@ export function SoilPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Nitrogen (mg/kg)</Label>
+                <Label>{t('soil.nitrogen', 'Nitrogen (mg/kg)')}</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -332,7 +334,7 @@ export function SoilPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Phosphorus (mg/kg)</Label>
+                <Label>{t('soil.phosphorus', 'Phosphorus (mg/kg)')}</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -345,7 +347,7 @@ export function SoilPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Potassium (mg/kg)</Label>
+                <Label>{t('soil.potassium', 'Potassium (mg/kg)')}</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -358,7 +360,7 @@ export function SoilPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>pH</Label>
+                <Label>{t('soil.ph', 'Soil pH')}</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -371,10 +373,10 @@ export function SoilPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Organic Carbon (%)</Label>
+                <Label>{t('soil.oc', 'Organic Carbon (%)')}</Label>
                 <Input
                   type="text"
-                  placeholder="Not available"
+                  placeholder={t('soil.notAvailable', 'Not available')}
                   value={form.organic_carbon}
                   onChange={(e) => handleChange('organic_carbon', e.target.value)}
                   disabled={soilLoading}
@@ -382,11 +384,11 @@ export function SoilPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Moisture (%) <span className="text-neutral-400 text-xs">(optional)</span></Label>
+                <Label>{t('soil.moisture', 'Moisture (%)')} <span className="text-neutral-400 text-xs">({t('common.optional', 'optional')})</span></Label>
                 <Input
                   type="number"
                   step="0.1"
-                  placeholder="e.g. 35 (leave blank to use default)"
+                  placeholder="e.g. 35"
                   value={form.moisture}
                   onChange={(e) => handleChange('moisture', e.target.value)}
                   disabled={soilLoading}
@@ -401,13 +403,13 @@ export function SoilPage() {
                   const district = (activeLocation.farmId === activeFarm?.id && activeLocation.district) || activeFarm?.district
                   return district && state ? (
                     <span>
-                      Location: <strong>{district}, {state}</strong>
+                      {t('dashboard.savedLocation', 'Location')}: <strong>{district}, {state}</strong>
                     </span>
                   ) : null
                 })()}
               </div>
               <Button type="submit" disabled={analyzing || soilLoading}>
-                {analyzing ? <ButtonLoader label="Analyzing soil..." /> : 'Analyze Soil'}
+                {analyzing ? <ButtonLoader label={t('soil.analyzing', 'Analyzing soil...')} /> : t('soil.analyze', 'Analyze Soil')}
               </Button>
             </div>
           </form>
@@ -418,7 +420,7 @@ export function SoilPage() {
       {isDirty && (
         <Alert variant="warning" className="border-amber-300 bg-amber-50 text-amber-900">
           <AlertTriangle className="h-4 w-4 text-amber-700" />
-          <span>Soil parameters changed. Click Analyze Soil to update the analysis.</span>
+          <span>{t('soil.staleAlert', 'Soil parameters changed. Click Analyze Soil to update the analysis.')}</span>
         </Alert>
       )}
 
@@ -437,7 +439,7 @@ export function SoilPage() {
             <CardTitle className="flex items-center justify-between text-base">
               <span className="flex items-center gap-2">
                 <Leaf className="h-4 w-4 text-brand" />
-                Village-Level Soil Profile
+                {t('soil.villageProfile', 'Village-Level Soil Profile')}
               </span>
               <Badge variant={
                 soilData.matchLevel === 1 ? 'success' :
@@ -458,74 +460,38 @@ export function SoilPage() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {soilData.ph != null && (
                 <div className="rounded-lg bg-neutral-50 p-3">
-                  <p className="text-xs text-neutral-500">Soil pH</p>
+                  <p className="text-xs text-neutral-500">{t('soil.ph', 'Soil pH')}</p>
                   <p className="text-base font-bold text-neutral-900">{soilData.ph}</p>
                 </div>
               )}
               {soilData.ec != null && (
                 <div className="rounded-lg bg-neutral-50 p-3">
-                  <p className="text-xs text-neutral-500">EC (dS/m)</p>
+                  <p className="text-xs text-neutral-500">{t('soil.ec', 'EC (dS/m)')}</p>
                   <p className="text-base font-bold text-neutral-900">{soilData.ec}</p>
                 </div>
               )}
               {soilData.organicCarbon != null && soilData.organicCarbon !== 'Not available' && (
                 <div className="rounded-lg bg-neutral-50 p-3">
-                  <p className="text-xs text-neutral-500">Organic Carbon (%)</p>
+                  <p className="text-xs text-neutral-500">{t('soil.oc', 'Organic Carbon (%)')}</p>
                   <p className="text-base font-bold text-neutral-900">{soilData.organicCarbon}</p>
                 </div>
               )}
               {soilData.nitrogen != null && (
                 <div className="rounded-lg bg-neutral-50 p-3">
-                  <p className="text-xs text-neutral-500">Available N (kg/ha)</p>
+                  <p className="text-xs text-neutral-500">{t('soil.nitrogen', 'Available N (kg/ha)')}</p>
                   <p className="text-base font-bold text-neutral-900">{soilData.nitrogen}</p>
                 </div>
               )}
               {soilData.phosphorus != null && (
                 <div className="rounded-lg bg-neutral-50 p-3">
-                  <p className="text-xs text-neutral-500">Available P₂O₅ (kg/ha)</p>
+                  <p className="text-xs text-neutral-500">{t('soil.phosphorus', 'Available P₂O₅ (kg/ha)')}</p>
                   <p className="text-base font-bold text-neutral-900">{soilData.phosphorus}</p>
                 </div>
               )}
               {soilData.potassium != null && (
                 <div className="rounded-lg bg-neutral-50 p-3">
-                  <p className="text-xs text-neutral-500">Available K₂O (kg/ha)</p>
+                  <p className="text-xs text-neutral-500">{t('soil.potassium', 'Available K₂O (kg/ha)')}</p>
                   <p className="text-base font-bold text-neutral-900">{soilData.potassium}</p>
-                </div>
-              )}
-              {soilData.sulfur != null && (
-                <div className="rounded-lg bg-neutral-50 p-3">
-                  <p className="text-xs text-neutral-500">Sulfur (ppm)</p>
-                  <p className="text-base font-bold text-neutral-900">{soilData.sulfur}</p>
-                </div>
-              )}
-              {soilData.zinc != null && (
-                <div className="rounded-lg bg-neutral-50 p-3">
-                  <p className="text-xs text-neutral-500">Zinc (ppm)</p>
-                  <p className="text-base font-bold text-neutral-900">{soilData.zinc}</p>
-                </div>
-              )}
-              {soilData.iron != null && (
-                <div className="rounded-lg bg-neutral-50 p-3">
-                  <p className="text-xs text-neutral-500">Iron (ppm)</p>
-                  <p className="text-base font-bold text-neutral-900">{soilData.iron}</p>
-                </div>
-              )}
-              {soilData.copper != null && (
-                <div className="rounded-lg bg-neutral-50 p-3">
-                  <p className="text-xs text-neutral-500">Copper (ppm)</p>
-                  <p className="text-base font-bold text-neutral-900">{soilData.copper}</p>
-                </div>
-              )}
-              {soilData.manganese != null && (
-                <div className="rounded-lg bg-neutral-50 p-3">
-                  <p className="text-xs text-neutral-500">Manganese (ppm)</p>
-                  <p className="text-base font-bold text-neutral-900">{soilData.manganese}</p>
-                </div>
-              )}
-              {soilData.boron != null && (
-                <div className="rounded-lg bg-neutral-50 p-3">
-                  <p className="text-xs text-neutral-500">Boron (ppm)</p>
-                  <p className="text-base font-bold text-neutral-900">{soilData.boron}</p>
                 </div>
               )}
             </div>
@@ -534,13 +500,13 @@ export function SoilPage() {
             <div className="mt-3 flex flex-wrap gap-3">
               {soilData.soilType && (
                 <div className="rounded-lg border border-neutral-200 px-3 py-2">
-                  <p className="text-xs text-neutral-500">Soil Type</p>
+                  <p className="text-xs text-neutral-500">{t('soil.texture', 'Soil Type')}</p>
                   <p className="text-sm font-semibold text-neutral-900">{soilData.soilType}</p>
                 </div>
               )}
               {soilData.croppingSeason && (
                 <div className="rounded-lg border border-neutral-200 px-3 py-2">
-                  <p className="text-xs text-neutral-500">Cropping Season</p>
+                  <p className="text-xs text-neutral-500">{t('crop.sowingSeason', 'Cropping Season')}</p>
                   <p className="text-sm font-semibold text-neutral-900">{soilData.croppingSeason}</p>
                 </div>
               )}
@@ -550,7 +516,7 @@ export function SoilPage() {
                   soilData.fertilityIndex === 'Low' ? 'border-red-200 bg-red-50' :
                   'border-yellow-200 bg-yellow-50'
                 }`}>
-                  <p className="text-xs text-neutral-500">Fertility Index</p>
+                  <p className="text-xs text-neutral-500">{t('soil.fertilityIndex', 'Fertility Index')}</p>
                   <p className={`text-sm font-bold ${
                     soilData.fertilityIndex === 'High' ? 'text-green-700' :
                     soilData.fertilityIndex === 'Low' ? 'text-red-700' :
@@ -565,16 +531,10 @@ export function SoilPage() {
               <div className="mt-3 rounded-lg bg-fresh-50 border border-fresh-200 p-3 flex items-start gap-2">
                 <Info className="h-4 w-4 text-brand mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-semibold text-brand mb-0.5">Plot-Specific Advisory</p>
+                  <p className="text-xs font-semibold text-brand mb-0.5">{t('soil.advisory', 'Plot-Specific Advisory')}</p>
                   <p className="text-sm text-neutral-700">{soilData.advisory}</p>
                 </div>
               </div>
-            )}
-
-            {soilData.recordCount != null && soilData.recordCount > 0 && (
-              <p className="mt-2 text-xs text-neutral-400">
-                Based on {soilData.recordCount} matching soil sample{soilData.recordCount !== 1 ? 's' : ''}.
-              </p>
             )}
           </CardContent>
         </Card>
@@ -584,7 +544,7 @@ export function SoilPage() {
       {soilLoading && (
         <div className="flex items-center gap-2 p-3.5 rounded-lg bg-fresh-50 border border-fresh-200 text-sm text-fresh-800">
           <LoadingSpinner className="h-4 w-4 text-brand animate-spin" />
-          <span className="font-medium">Loading soil data...</span>
+          <span className="font-medium">{t('soil.loading', 'Loading soil data...')}</span>
         </div>
       )}
 
@@ -611,7 +571,7 @@ export function SoilPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Health Score</CardTitle>
+                <CardTitle className="text-lg">{t('soil.healthScore', 'Health Score')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-6">
@@ -627,7 +587,7 @@ export function SoilPage() {
                       className="h-3"
                       indicatorClassName={
                         displayResult.health_score >= 70
-                          ? 'bg-success'
+                           ? 'bg-success'
                           : displayResult.health_score >= 40
                             ? 'bg-warning'
                             : 'bg-danger'
@@ -641,7 +601,7 @@ export function SoilPage() {
                     >
                       {displayResult.grade}
                     </Badge>
-                    <span className="mt-1 text-xs text-neutral-500">Grade</span>
+                    <span className="mt-1 text-xs text-neutral-500">{t('soil.grade', 'Grade')}</span>
                   </div>
                 </div>
               </CardContent>
@@ -651,7 +611,7 @@ export function SoilPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Info className="h-4 w-4 text-info" />
-                  Summary
+                  {t('common.summary', 'Summary')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -667,9 +627,9 @@ export function SoilPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Leaf className="h-5 w-5 text-brand" />
-                Nutrient Breakdown
+                {t('soil.nutrientBreakdown', 'Nutrient Breakdown')}
               </CardTitle>
-              <CardDescription>Per-nutrient status with plain-language explanations.</CardDescription>
+              <CardDescription>{t('soil.nutrientDesc', 'Per-nutrient status with plain-language explanations.')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -688,7 +648,7 @@ export function SoilPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-neutral-900">{n.nutrient}</span>
                           <Badge variant={n.status === 'Optimal' ? 'success' : n.status === 'Low' ? 'warning' : 'danger'}>
-                            {n.status}
+                            {n.status === 'Optimal' ? t('soil.optimal', 'Optimal') : n.status === 'Low' ? t('soil.low', 'Low') : t('soil.high', 'High')}
                           </Badge>
                           <span className="text-sm text-neutral-500">
                             ({formatNumber(n.value)})
@@ -708,7 +668,7 @@ export function SoilPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Droplets className="h-5 w-5 text-info" />
-                Recommendations
+                {t('soil.recommendations', 'Recommendations')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -734,10 +694,10 @@ export function SoilPage() {
               <FlaskConical className="h-7 w-7" />
             </div>
             <h3 className="mt-4 text-lg font-bold text-neutral-900">
-              Ready for soil analysis
+              {t('soil.readyAnalysis', 'Ready for soil analysis')}
             </h3>
             <p className="mx-auto mt-1.5 max-w-md text-xs sm:text-sm text-neutral-500 leading-relaxed">
-              Review the soil parameters, then click Analyze Soil.
+              {t('soil.readyDesc', 'Review the soil parameters, then click Analyze Soil.')}
             </p>
           </Card>
         )

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/Label'
 import { Select, SelectValue, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/Select'
 import { Alert } from '@/components/ui/Alert'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 const TOKEN_KEY = 'agriai_token'
@@ -17,6 +18,7 @@ interface JsonFallback {
 
 export function ReportsPage() {
   const { farms, currentFarm } = useFarm()
+  const { t } = useLanguage()
   const [selectedId, setSelectedId] = useState<string>(currentFarm ? String(currentFarm.id) : '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -97,10 +99,10 @@ export function ReportsPage() {
       <div>
         <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
           <FileText className="h-6 w-6 text-brand" />
-          Farm Reports
+          {t('reports.title', 'Farm Reports')}
         </h1>
         <p className="text-sm text-neutral-500">
-          Generate a comprehensive PDF report of your farm's stored data and insights.
+          {t('reports.subtitle', "Generate a comprehensive PDF report of your farm's stored data and insights.")}
         </p>
       </div>
 
@@ -119,7 +121,7 @@ export function ReportsPage() {
       {/* Generator card */}
       <Card>
         <CardHeader>
-          <CardTitle>Generate PDF Report</CardTitle>
+          <CardTitle>{t('reports.generateReport', 'Generate PDF Report')}</CardTitle>
           <CardDescription>Select a farm and download its report.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -153,12 +155,12 @@ export function ReportsPage() {
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating report…
+                  {t('reports.generating', 'Generating report…')}
                 </>
               ) : (
                 <>
                   <Download className="h-4 w-4" />
-                  Generate PDF Report
+                  {t('reports.downloadPdf', 'Generate PDF Report')}
                 </>
               )}
             </Button>

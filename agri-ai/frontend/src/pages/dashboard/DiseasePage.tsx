@@ -8,6 +8,7 @@ import { Alert } from '@/components/ui/Alert'
 import { PageLoader, ButtonLoader } from '@/components/ui/Loading'
 import { useAsync } from '@/hooks/useAsync'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { diseaseApi } from '@/services/modules'
 import { cn } from '@/lib/utils'
 import {
@@ -87,6 +88,7 @@ function ProbabilityTooltip({ active, payload, label }: any) {
 
 export function DiseasePage() {
   const { farms, currentFarm } = useFarm()
+  const { t, tCrop } = useLanguage()
   const { data: result, loading, error, run } = useAsync<DiseaseResult>()
 
   // File state
@@ -177,18 +179,18 @@ export function DiseasePage() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-neutral-900">Disease Detection</h1>
+        <h1 className="text-2xl font-bold text-neutral-900">{t('disease.title', 'Disease Detection')}</h1>
         <p className="text-sm text-neutral-500">
-          Upload a crop leaf image to identify potential diseases.
+          {t('disease.subtitle', 'Upload a crop leaf image to identify potential diseases.')}
         </p>
       </div>
 
       {/* Upload card */}
       <Card>
         <CardHeader>
-          <CardTitle>Upload Image</CardTitle>
+          <CardTitle>{t('disease.uploadCardTitle', 'Upload Image')}</CardTitle>
           <CardDescription>
-            Drag and drop, use your camera, or click to browse. Max 10 MB.
+            {t('disease.uploadCardDesc', 'Drag and drop, use your camera, or click to browse. Max 10 MB.')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -233,10 +235,10 @@ export function DiseasePage() {
                     <Upload className="h-6 w-6" />
                   </div>
                   <p className="mt-3 text-sm font-medium text-neutral-700">
-                    Drop an image here or <span className="text-brand">click to browse</span>
+                    {t('disease.dropImageHere', 'Drop an image here or')} <span className="text-brand">{t('disease.clickToBrowse', 'click to browse')}</span>
                   </p>
                   <p className="mt-1 text-xs text-neutral-400">
-                    JPEG, PNG, WebP, TIFF, BMP up to 10 MB
+                    {t('disease.supportedFormats', 'JPEG, PNG, WebP, TIFF, BMP up to 10 MB')}
                   </p>
                 </>
               )}
@@ -280,11 +282,11 @@ export function DiseasePage() {
                 onClick={onSubmit}
               >
                 {loading ? (
-                  <ButtonLoader label="Analyzing..." />
+                  <ButtonLoader label={t('disease.analyzing', 'Analyzing...')} />
                 ) : (
                   <>
                     <CheckCircle2 className="h-4 w-4" />
-                    Analyze Image
+                    {t('disease.analyzeImage', 'Analyze Image')}
                   </>
                 )}
               </Button>
@@ -295,7 +297,7 @@ export function DiseasePage() {
                 disabled={loading}
               >
                 <Camera className="h-4 w-4" />
-                Use Camera
+                {t('disease.useCamera', 'Use Camera')}
               </Button>
               {file && (
                 <Button
@@ -305,7 +307,7 @@ export function DiseasePage() {
                   disabled={loading}
                 >
                   <X className="h-4 w-4" />
-                  Clear
+                  {t('disease.clear', 'Clear')}
                 </Button>
               )}
             </div>
@@ -322,7 +324,7 @@ export function DiseasePage() {
 
       {/* Loading state */}
       {loading && (
-        <PageLoader label="Analyzing crop image..." />
+        <PageLoader label={t('disease.analyzing', 'Analyzing crop image...')} />
       )}
 
       {/* Error */}
@@ -336,11 +338,11 @@ export function DiseasePage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Analysis Result</CardTitle>
+                <CardTitle>{t('disease.analysisResult', 'Analysis Result')}</CardTitle>
                 <CardDescription>
                   {result.image_processed
-                    ? 'Image was analyzed with high-precision vision intelligence.'
-                    : 'Showing simulated results.'}
+                    ? t('disease.analyzedVision', 'Image was analyzed with high-precision vision intelligence.')
+                    : t('disease.simulatedResults', 'Showing simulated results.')}
                 </CardDescription>
               </div>
               {!result.demo_mode ? (
@@ -374,11 +376,11 @@ export function DiseasePage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Predicted Diagnosis</p>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">{t('disease.predictedDiagnosis', 'Predicted Diagnosis')}</p>
                       {result.crop_detected && (
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-full border border-emerald-200">
                           <Sprout className="h-3 w-3" />
-                          {result.crop_detected}
+                          {tCrop(result.crop_detected)}
                         </span>
                       )}
                     </div>
@@ -392,14 +394,14 @@ export function DiseasePage() {
                   variant={result.is_healthy ? 'success' : 'danger'}
                   className="px-3 py-1 text-xs font-bold"
                 >
-                  {result.is_healthy ? 'Healthy Foliage' : 'Disease Detected'}
+                  {result.is_healthy ? t('disease.healthyFoliage', 'Healthy Foliage') : t('disease.diseaseDetected', 'Disease Detected')}
                 </Badge>
               </div>
 
               {/* Confidence */}
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <p className="text-sm font-medium text-neutral-700">Diagnosis Confidence</p>
+                  <p className="text-sm font-medium text-neutral-700">{t('disease.diagnosisConfidence', 'Diagnosis Confidence')}</p>
                   <p className="text-sm font-semibold text-neutral-900">
                     {(result.confidence * 100).toFixed(1)}%
                   </p>
@@ -421,7 +423,7 @@ export function DiseasePage() {
                 <Alert variant="warning">
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>Please upload a clearer image for a more reliable result.</span>
+                    <span>{t('disease.clearerImageWarning', 'Please upload a clearer image for a more reliable result.')}</span>
                   </div>
                 </Alert>
               )}
@@ -431,7 +433,7 @@ export function DiseasePage() {
                 <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-1.5 shadow-2xs">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-600 flex items-center gap-1.5">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    Pathology Observations
+                    {t('disease.pathologyObservations', 'Pathology Observations')}
                   </h4>
                   <p className="text-sm text-neutral-700 leading-relaxed">
                     {result.description}
@@ -444,7 +446,7 @@ export function DiseasePage() {
                 <div className="rounded-xl border border-emerald-200/90 bg-[#F4F9F4] p-4 sm:p-5 space-y-3 shadow-2xs">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
                     <ShieldCheck className="h-4 w-4 text-emerald-700" />
-                    Recommended Treatment & Management Actions
+                    {t('disease.recommendedTreatment', 'Recommended Treatment & Management Actions')}
                   </h4>
                   <ul className="space-y-2.5">
                     {result.treatment.map((step, idx) => (
@@ -463,7 +465,7 @@ export function DiseasePage() {
               {probData.length > 0 && (
                 <div>
                   <p className="mb-3 text-sm font-medium text-neutral-700">
-                    Probability Breakdown
+                    {t('disease.probabilityBreakdown', 'Probability Breakdown')}
                   </p>
                   <div className="h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">

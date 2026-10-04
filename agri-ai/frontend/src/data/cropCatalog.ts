@@ -119,8 +119,8 @@ export interface CatalogCropItem {
  * Canonical images of real fields, crops, orchards, and plants across India.
  * Aliases always point to the same canonical image.
  */
-import { cropImages } from './cropImages'
-export { cropImages }
+import { cropImages, getCropImage, cropCatalogMap } from './cropImages'
+export { cropImages, getCropImage, cropCatalogMap }
 
 /**
  * 15. CROP NAME NORMALIZATION

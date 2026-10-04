@@ -10,6 +10,7 @@ import {
 import { optimizeApi } from '@/services/modules'
 import { useAsync } from '@/hooks/useAsync'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -47,6 +48,7 @@ interface OptimizeResult {
 
 export function OptimizePage() {
   const { currentFarm } = useFarm()
+  const { t, tCrop } = useLanguage()
   const { data: result, loading, error, run } = useAsync<OptimizeResult>()
 
   const [form, setForm] = useState({
@@ -89,7 +91,7 @@ export function OptimizePage() {
   if (!currentFarm) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-neutral-900">Farm Optimizer</h1>
+        <h1 className="text-2xl font-bold text-neutral-900">{t('optimize.title', 'Farm Optimizer')}</h1>
         <EmptyState
           title="No farm selected"
           description="Please create or select a farm from the Farm Management page before optimizing."
@@ -102,9 +104,9 @@ export function OptimizePage() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-neutral-900">Farm Optimizer</h1>
+        <h1 className="text-2xl font-bold text-neutral-900">{t('optimize.title', 'Farm Optimizer')}</h1>
         <p className="text-sm text-neutral-500">
-          Get AI-powered optimization recommendations to maximize your farm's profitability
+          {t('optimize.subtitle', "Get AI-powered optimization recommendations to maximize your farm's profitability")}
         </p>
       </div>
 
@@ -135,7 +137,7 @@ export function OptimizePage() {
                       <SelectContent>
                         {CROP_OPTIONS.map((crop) => (
                           <SelectItem key={crop} value={crop}>
-                            {crop}
+                            {tCrop(crop)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -240,7 +242,7 @@ export function OptimizePage() {
           </CardContent>
           <CardFooter>
             <Button type="submit" disabled={loading || !form.crop}>
-              {loading ? <ButtonLoader label="Optimizing..." /> : 'Run Optimization'}
+              {loading ? <ButtonLoader label={t('optimize.optimizing', 'Optimizing...')} /> : t('optimize.runOptimization', 'Run Optimization')}
             </Button>
           </CardFooter>
         </form>

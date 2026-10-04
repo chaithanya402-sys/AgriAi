@@ -19,6 +19,7 @@ import { Alert } from '@/components/ui/Alert'
 import { PageLoader, ButtonLoader } from '@/components/ui/Loading'
 import { useAsync } from '@/hooks/useAsync'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { riskApi } from '@/services/modules'
 import { cn, formatNumber } from '@/lib/utils'
 import {
@@ -203,6 +204,7 @@ function SliderInput({ label, icon: Icon, value, onChange, disabled }: SliderInp
 
 export function RiskPage() {
   const { farms, currentFarm } = useFarm()
+  const { t } = useLanguage()
   const { data: result, loading, error, run } = useAsync<RiskResult>()
 
   // Form state
@@ -251,9 +253,9 @@ export function RiskPage() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-neutral-900">Risk Assessment</h1>
+        <h1 className="text-2xl font-bold text-neutral-900">{t('risk.title', 'Risk Assessment')}</h1>
         <p className="text-sm text-neutral-500">
-          Evaluate farm risk across weather, soil, water, disease, and market factors.
+          {t('risk.subtitle', 'Evaluate farm risk across weather, soil, water, disease, and market factors.')}
         </p>
       </div>
 
@@ -286,11 +288,11 @@ export function RiskPage() {
                 className="w-full sm:w-auto"
               >
                 {loading ? (
-                  <ButtonLoader label="Assessing..." />
+                  <ButtonLoader label={t('risk.assessing', 'Assessing...')} />
                 ) : (
                   <>
                     <ShieldAlert className="h-4 w-4" />
-                    Assess Risk
+                    {t('risk.assessRisk', 'Assess Risk')}
                   </>
                 )}
               </Button>

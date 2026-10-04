@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Alert } from '@/components/ui/Alert'
 import { useAsync } from '@/hooks/useAsync'
 import { useFarm } from '@/components/farm/FarmContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { weatherApi } from '@/services/modules'
 import { formatNumber } from '@/lib/utils'
 import {
@@ -109,6 +110,7 @@ const DISTRICT_CENTROIDS: Record<string, { lat: number; lon: number }> = {
 }
 
 export function WeatherPage() {
+  const { t } = useLanguage()
   const { farms, selectedFarmId, setSelectedFarmId, currentFarm, activeLocation } = useFarm()
 
   const coords = useMemo(() => {
@@ -180,8 +182,8 @@ export function WeatherPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Weather"
-          description="Current conditions and 7-day forecast for your farm."
+          title={t('weather.title', 'Weather')}
+          description={t('weather.subtitle', 'Current conditions and 7-day forecast for your farm.')}
         />
         <Card>
           <CardContent className="py-8">
@@ -198,8 +200,8 @@ export function WeatherPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Weather"
-        description="Current conditions and 7-day forecast for your farm."
+        title={t('weather.title', 'Weather')}
+        description={t('weather.subtitle', 'Current conditions and 7-day forecast for your farm.')}
         right={
           <div className="flex items-center gap-3">
             <select
@@ -215,8 +217,8 @@ export function WeatherPage() {
             </select>
             {demo ? <DemoBadge /> : <LiveBadge />}
             <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-              {loading ? <ButtonLoader label="Refreshing…" /> : <RefreshCw className="h-4 w-4" />}
-              <span className="hidden sm:inline">Refresh</span>
+              {loading ? <ButtonLoader label={t('weather.refreshing', 'Refreshing…')} /> : <RefreshCw className="h-4 w-4" />}
+              <span className="hidden sm:inline">{t('weather.refresh', 'Refresh')}</span>
             </Button>
           </div>
         }
@@ -225,7 +227,7 @@ export function WeatherPage() {
       <Alert variant="info" className="flex items-center gap-2">
         <MapPin className="h-4 w-4 shrink-0" />
         <span>
-          Showing weather for{' '}
+          {t('weather.showingWeatherFor', 'Showing weather for')}{' '}
           <span className="font-semibold">{currentFarm.name}</span>
           {(() => {
             const state = (activeLocation.farmId === currentFarm.id && activeLocation.state) || currentFarm.state
@@ -244,7 +246,7 @@ export function WeatherPage() {
       ) : (
         <Card>
           <CardContent className="py-4">
-            <PageLoader label="Loading current weather…" />
+            <PageLoader label={t('weather.loadingCurrent', 'Loading current weather…')} />
           </CardContent>
         </Card>
       )}
@@ -252,8 +254,8 @@ export function WeatherPage() {
       {forecast.data && !forecast.loading ? (
         <Card>
           <CardHeader>
-            <CardTitle>7-day forecast</CardTitle>
-            <CardDescription>Temperature range and rainfall probability per day.</CardDescription>
+            <CardTitle>{t('weather.forecast', '7-day forecast')}</CardTitle>
+            <CardDescription>{t('weather.sevenDayDesc', 'Temperature range and rainfall probability per day.')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {chartData.length > 0 ? (
@@ -359,28 +361,29 @@ function PageHeader({
 }
 
 function CurrentConditions({ weather }: { weather: CurrentWeather }) {
+  const { t } = useLanguage()
   const stats = [
     {
       key: 'temperature',
-      label: 'Temperature',
+      label: t('weather.temperature', 'Temperature'),
       value: `${formatNumber(weather.temperature, 1)}°C`,
       icon: STATUS_ICONS.temperature,
     },
     {
       key: 'humidity',
-      label: 'Humidity',
+      label: t('weather.humidity', 'Humidity'),
       value: `${weather.humidity}%`,
       icon: STATUS_ICONS.humidity,
     },
     {
       key: 'wind',
-      label: 'Wind Speed',
+      label: t('weather.windSpeed', 'Wind Speed'),
       value: `${formatNumber(weather.wind_speed, 1)} km/h`,
       icon: STATUS_ICONS.wind,
     },
     {
       key: 'rainfall',
-      label: 'Rainfall (24h)',
+      label: t('weather.rainfall', 'Rainfall (24h)'),
       value: `${formatNumber(weather.rainfall, 1)} mm`,
       icon: STATUS_ICONS.rainfall,
     },
@@ -390,7 +393,7 @@ function CurrentConditions({ weather }: { weather: CurrentWeather }) {
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <div>
-          <CardTitle>Current conditions</CardTitle>
+          <CardTitle>{t('weather.current', 'Current conditions')}</CardTitle>
           <CardDescription>
             {weather.condition} · {formatWeatherSource(weather.source)}
           </CardDescription>
