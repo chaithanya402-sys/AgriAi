@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     # External APIs (all proxied through backend, never exposed to frontend)
     OPENWEATHER_API_KEY: Optional[str] = None
     MARKET_API_KEY: Optional[str] = None
+    GEMINI_API_KEY: Optional[str] = None
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"

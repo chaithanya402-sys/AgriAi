@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
-import { Upload, Camera, X, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
+import { Upload, Camera, X, AlertTriangle, CheckCircle2, XCircle, Sparkles, Sprout, Check, ShieldCheck } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -34,6 +34,10 @@ interface DiseaseResult {
   message: string
   demo_mode: boolean
   image_processed: boolean
+  crop_detected?: string
+  description?: string
+  treatment?: string[]
+  ai_model?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -335,11 +339,16 @@ export function DiseasePage() {
                 <CardTitle>Analysis Result</CardTitle>
                 <CardDescription>
                   {result.image_processed
-                    ? 'Image was processed successfully.'
+                    ? 'Image was analyzed with high-precision vision intelligence.'
                     : 'Showing simulated results.'}
                 </CardDescription>
               </div>
-              {result.demo_mode && (
+              {!result.demo_mode ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-600 animate-pulse" />
+                  Gemini Vision AI {result.ai_model ? `(${result.ai_model})` : ''}
+                </span>
+              ) : (
                 <Badge variant="warning">Demo data</Badge>
               )}
             </div>
@@ -347,39 +356,50 @@ export function DiseasePage() {
           <CardContent>
             <div className="space-y-6">
               {/* Prediction */}
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    'flex h-10 w-10 items-center justify-center rounded-full',
-                    result.is_healthy
-                      ? 'bg-success/10 text-success'
-                      : 'bg-danger/10 text-danger',
-                  )}
-                >
-                  {result.is_healthy ? (
-                    <CheckCircle2 className="h-5 w-5" />
-                  ) : (
-                    <XCircle className="h-5 w-5" />
-                  )}
+              <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl bg-neutral-50/70 border border-neutral-200">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={cn(
+                      'flex h-12 w-12 items-center justify-center rounded-xl shadow-xs',
+                      result.is_healthy
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-rose-100 text-rose-700',
+                    )}
+                  >
+                    {result.is_healthy ? (
+                      <CheckCircle2 className="h-6 w-6" />
+                    ) : (
+                      <XCircle className="h-6 w-6" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Predicted Diagnosis</p>
+                      {result.crop_detected && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <Sprout className="h-3 w-3" />
+                          {result.crop_detected}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xl font-bold text-neutral-900">
+                      {result.prediction}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-neutral-500">Predicted Class</p>
-                  <p className="text-lg font-semibold text-neutral-900">
-                    {result.prediction}
-                  </p>
-                </div>
+
                 <Badge
                   variant={result.is_healthy ? 'success' : 'danger'}
-                  className="ml-auto"
+                  className="px-3 py-1 text-xs font-bold"
                 >
-                  {result.is_healthy ? 'Healthy' : 'Disease Detected'}
+                  {result.is_healthy ? 'Healthy Foliage' : 'Disease Detected'}
                 </Badge>
               </div>
 
               {/* Confidence */}
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <p className="text-sm font-medium text-neutral-700">Confidence</p>
+                  <p className="text-sm font-medium text-neutral-700">Diagnosis Confidence</p>
                   <p className="text-sm font-semibold text-neutral-900">
                     {(result.confidence * 100).toFixed(1)}%
                   </p>
@@ -404,6 +424,39 @@ export function DiseasePage() {
                     <span>Please upload a clearer image for a more reliable result.</span>
                   </div>
                 </Alert>
+              )}
+
+              {/* Pathology Description */}
+              {result.description && (
+                <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-1.5 shadow-2xs">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-600 flex items-center gap-1.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    Pathology Observations
+                  </h4>
+                  <p className="text-sm text-neutral-700 leading-relaxed">
+                    {result.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Actionable Treatment Plan */}
+              {result.treatment && result.treatment.length > 0 && (
+                <div className="rounded-xl border border-emerald-200/90 bg-[#F4F9F4] p-4 sm:p-5 space-y-3 shadow-2xs">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+                    <ShieldCheck className="h-4 w-4 text-emerald-700" />
+                    Recommended Treatment & Management Actions
+                  </h4>
+                  <ul className="space-y-2.5">
+                    {result.treatment.map((step, idx) => (
+                      <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-neutral-800">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#123B22] text-[11px] font-bold text-white mt-0.5">
+                          {idx + 1}
+                        </span>
+                        <span className="leading-snug">{step}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
 
               {/* Probabilities chart */}

@@ -348,6 +348,28 @@ def resolve_location(
                             "farm_name": farm.name,
                         }
 
+                # 1a-2. Farm has saved district, but state is missing
+                if farm.district and not farm.state:
+                    norm_dist = farm.district.strip().lower()
+                    for s_key, s_canonical in states_map.items():
+                        df = load_state_dataset(s_canonical)
+                        if df is not None and not df.empty and "District" in df.columns:
+                            dists = [str(d).strip().lower() for d in df["District"].dropna().unique()]
+                            if any(norm_dist in d or d in norm_dist for d in dists):
+                                recs, matched_district = get_district_records(s_canonical, farm.district)
+                                coords = get_coords_for_district(s_canonical, matched_district or farm.district)
+                                return {
+                                    "state": s_canonical,
+                                    "district": matched_district or farm.district,
+                                    "mandal": getattr(farm, "mandal", None),
+                                    "village": getattr(farm, "village", None),
+                                    "source": "farm_district_match",
+                                    "lat": farm.latitude or (coords[0] if coords else None),
+                                    "lon": farm.longitude or (coords[1] if coords else None),
+                                    "farm_id": farm.id,
+                                    "farm_name": farm.name,
+                                }
+
                 # 1b. Farm has coordinates saved or passed
                 farm_lat = farm.latitude if farm.latitude is not None and not (farm.latitude == 0.0) else lat
                 farm_lon = farm.longitude if farm.longitude is not None and not (farm.longitude == 0.0) else lon

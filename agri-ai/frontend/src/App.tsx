@@ -30,6 +30,7 @@ import { NotificationsPage } from '@/pages/dashboard/NotificationsPage'
 import { ReportsPage } from '@/pages/dashboard/ReportsPage'
 import { SettingsPage } from '@/pages/dashboard/SettingsPage'
 import { ProfilePage } from '@/pages/dashboard/ProfilePage'
+import { CropDetailPage } from '@/pages/CropDetailPage'
 
 function DashboardShell() {
   return (
@@ -51,16 +52,29 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
       </Route>
 
+      {/* Direct /crops/:cropId Route */}
+      <Route
+        path="/crops/:cropId"
+        element={
+          <FarmProvider>
+            <CropDetailPage />
+          </FarmProvider>
+        }
+      />
+
       {/* Dashboard */}
       <Route path="/dashboard" element={<DashboardShell />}>
         <Route index element={<DashboardPage />} />
         <Route path="farms" element={<FarmManagementPage />} />
         <Route path="soil" element={<SoilPage />} />
         <Route path="crop" element={<CropPage />} />
+        <Route path="crop/:cropId" element={<CropDetailPage />} />
+        <Route path="crops/:cropId" element={<CropDetailPage />} />
         <Route path="yield" element={<YieldPage />} />
         <Route path="yield/optimize" element={<YieldOptimizationPage />} />
         <Route path="irrigation" element={<IrrigationPage />} />
         <Route path="action-plan" element={<CropActionPlanPage />} />
+        <Route path="crop-action-plan" element={<CropActionPlanPage />} />
         <Route path="weather" element={<WeatherPage />} />
         <Route path="disease" element={<DiseasePage />} />
         <Route path="fertilizer" element={<FertilizerPage />} />

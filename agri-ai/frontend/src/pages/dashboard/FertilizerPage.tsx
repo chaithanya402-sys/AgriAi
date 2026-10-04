@@ -20,6 +20,7 @@ import {
   type FertilizerTrackingRecord,
 } from '@/data/fertilizerData'
 import { cn } from '@/lib/utils'
+import { soilApi, type FarmSoilData } from '@/services/modules'
 import {
   ArrowLeft,
   Calendar,
@@ -37,53 +38,95 @@ import {
   MapPin,
   FlaskConical,
   Beaker,
+  CheckCircle2,
 } from 'lucide-react'
 
 export function FertilizerPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { farms, selectedFarmId, currentFarm, activeCrop } = useFarm()
+  const { farms, selectedFarmId, setSelectedFarmId, currentFarm, activeCrop } = useFarm()
 
   const activeFarm = farms.find((f) => f.id === selectedFarmId) || currentFarm || null
 
-  // 1. Resolve selected crop from URL param -> activeCrop -> localStorage -> default ('Ragi')
-  const initialCrop = useMemo(() => {
+  // 1. Direct single source of truth: Fertilizer page always consumes the centralized activeCrop
+  const currentCrop = activeCrop
+  const currentCropName = useMemo(() => {
+    if (activeCrop?.rawCropName) return activeCrop.rawCropName
+    if (activeCrop?.cropName) {
+      return activeCrop.cropName.includes('/')
+        ? activeCrop.cropName.split('/')[0].trim()
+        : activeCrop.cropName
+    }
     const urlCrop = searchParams.get('crop')
     if (urlCrop) return urlCrop
-    if (activeCrop?.rawCropName) return activeCrop.rawCropName
     const saved = localStorage.getItem('agriai_selected_crop')
     if (saved) return saved
     return 'Ragi'
-  }, [searchParams, activeCrop?.rawCropName])
+  }, [activeCrop, searchParams])
 
-  const [selectedCrop, setSelectedCrop] = useState<string>(initialCrop)
+  // Farm-specific soil data
+  const [farmSoil, setFarmSoil] = useState<FarmSoilData | null>(null)
+  const [soilLoading, setSoilLoading] = useState(false)
 
   useEffect(() => {
-    const param = searchParams.get('crop')
-    if (param) {
-      if (param !== selectedCrop) {
-        setSelectedCrop(param)
-      }
-    } else if (activeCrop?.rawCropName && activeCrop.rawCropName !== selectedCrop) {
-      setSelectedCrop(activeCrop.rawCropName)
-    }
-  }, [searchParams, activeCrop?.rawCropName, selectedCrop])
+    if (!activeFarm?.id) return
+    const farmId = activeFarm.id
+    console.log("FARM CHANGED:", farmId)
+    console.log("FARM LOCATION:", activeFarm.location || activeFarm.district || '')
 
-  // 2. Compute dynamic plan based on selected crop and farm soil measurements
-  const cropDetails = useMemo(() => getCropDetails(selectedCrop), [selectedCrop])
+    let isMounted = true
+    setSoilLoading(true)
+
+    soilApi
+      .getFarmSoil(farmId)
+      .then((data) => {
+        if (!isMounted) return
+        setFarmSoil(data)
+      })
+      .catch((err) => {
+        console.warn('Failed to load soil for fertilizer page:', err)
+      })
+      .finally(() => {
+        if (isMounted) setSoilLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [activeFarm?.id])
+
+  // 2. Dynamic plan recalculation based on activeCrop, farm profile, and current soil profile
+  const cropDetails = useMemo(() => getCropDetails(currentCropName), [currentCropName])
 
   const soilReadings = useMemo(() => {
     return {
-      nitrogen: activeCrop?.nitrogen ?? 60,
-      phosphorus: activeCrop?.phosphorus ?? 40,
-      potassium: activeCrop?.potassium ?? 40,
-      soilPh: activeCrop?.soilPH ?? 6.5,
+      nitrogen: (farmSoil?.found && farmSoil.nitrogen != null) ? farmSoil.nitrogen : (activeCrop?.nitrogen ?? 60),
+      phosphorus: (farmSoil?.found && farmSoil.phosphorus != null) ? farmSoil.phosphorus : (activeCrop?.phosphorus ?? 40),
+      potassium: (farmSoil?.found && farmSoil.potassium != null) ? farmSoil.potassium : (activeCrop?.potassium ?? 40),
+      soilPh: (farmSoil?.found && farmSoil.ph != null) ? farmSoil.ph : (activeCrop?.soilPH ?? 6.5),
     }
-  }, [activeCrop])
+  }, [farmSoil, activeCrop])
 
   const plan = useMemo(
-    () => getCropFertilizerPlan(selectedCrop, soilReadings),
-    [selectedCrop, soilReadings]
+    () =>
+      getCropFertilizerPlan(currentCropName, soilReadings, {
+        farmId: activeFarm?.id,
+        farmName: activeCrop?.farmName || activeFarm?.name,
+        location: activeCrop?.location || activeFarm?.district || activeFarm?.village || undefined,
+        area: activeCrop?.area ?? activeFarm?.total_area ?? undefined,
+      }),
+    [
+      currentCropName,
+      soilReadings,
+      activeFarm?.id,
+      activeFarm?.name,
+      activeFarm?.district,
+      activeFarm?.village,
+      activeFarm?.total_area,
+      activeCrop?.farmName,
+      activeCrop?.location,
+      activeCrop?.area,
+    ]
   )
 
   // 3. Modals state
@@ -92,10 +135,15 @@ export function FertilizerPage() {
   const [isAddRecordModalOpen, setIsAddRecordModalOpen] = useState(false)
   const [editingRecord, setEditingRecord] = useState<FertilizerTrackingRecord | null>(null)
 
-  // 4. Tracking Records state
+  // 4. Tracking Records state keyed by farmId and activeCrop
+  const trackingStorageKey = useMemo(() => {
+    const fId = activeFarm?.id || 'default'
+    return `agriai_fertilizer_records_${fId}_${currentCropName}`
+  }, [activeFarm?.id, currentCropName])
+
   const [trackingRecords, setTrackingRecords] = useState<FertilizerTrackingRecord[]>(() => {
     try {
-      const saved = localStorage.getItem(`agriai_fertilizer_records_${selectedCrop}`)
+      const saved = localStorage.getItem(trackingStorageKey)
       if (saved) return JSON.parse(saved)
     } catch {
       // ignore
@@ -105,7 +153,7 @@ export function FertilizerPage() {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(`agriai_fertilizer_records_${selectedCrop}`)
+      const saved = localStorage.getItem(trackingStorageKey)
       if (saved) {
         setTrackingRecords(JSON.parse(saved))
         return
@@ -114,12 +162,12 @@ export function FertilizerPage() {
       // ignore
     }
     setTrackingRecords(plan.defaultTrackingRecords)
-  }, [selectedCrop, plan.defaultTrackingRecords])
+  }, [trackingStorageKey, plan.defaultTrackingRecords])
 
   const saveTrackingRecords = (records: FertilizerTrackingRecord[]) => {
     setTrackingRecords(records)
     try {
-      localStorage.setItem(`agriai_fertilizer_records_${selectedCrop}`, JSON.stringify(records))
+      localStorage.setItem(trackingStorageKey, JSON.stringify(records))
     } catch {
       // ignore
     }
@@ -258,11 +306,22 @@ export function FertilizerPage() {
           </p>
         </div>
 
-        {/* Top-Right Farm Badge matching screenshot */}
+        {/* Top-Right Farm Selector */}
         <div className="flex items-center gap-2 self-start">
-          <div className="flex h-9 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3.5 text-xs font-bold text-neutral-800 shadow-2xs">
-            <Home className="h-3.5 w-3.5 text-emerald-800" />
-            <span>{farmDisplayName}</span>
+          <div className="flex h-9 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 text-xs font-bold text-neutral-800 shadow-2xs">
+            <Home className="h-3.5 w-3.5 text-emerald-800 shrink-0" />
+            <select
+              value={selectedFarmId?.toString() || activeFarm?.id?.toString() || ''}
+              onChange={(e) => setSelectedFarmId(Number(e.target.value))}
+              className="bg-transparent border-none text-xs font-bold text-neutral-800 focus:outline-hidden cursor-pointer"
+            >
+              {farms.map((f) => (
+                <option key={f.id} value={f.id.toString()}>
+                  {f.name} {f.district ? `(${f.district})` : ''}
+                </option>
+              ))}
+            </select>
+            {soilLoading && <span className="text-[10px] text-neutral-400 animate-pulse">Loading...</span>}
           </div>
         </div>
       </div>
@@ -296,8 +355,8 @@ export function FertilizerPage() {
                   </h2>
                   <div className="mt-1">
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/90 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
-                      <Sprout className="h-3 w-3 text-emerald-700" />
-                      Selected Crop
+                      <CheckCircle2 className="h-3 w-3 text-emerald-700" />
+                      Active Crop
                     </span>
                   </div>
                 </div>

@@ -47,7 +47,7 @@ const CROP_PROFILES: Record<string, CropIrrigationProfile> = {
 
 export function IrrigationPage() {
   const navigate = useNavigate()
-  const { farms, selectedFarmId, currentFarm, activeCrop, activeLocation } = useFarm()
+  const { farms, selectedFarmId, setSelectedFarmId, currentFarm, activeCrop, activeLocation } = useFarm()
 
   // 1. Resolve Active Farm from FarmContext / Database
   const activeFarm = farms.find((f) => f.id === selectedFarmId) || currentFarm || farms[0] || null
@@ -58,17 +58,18 @@ export function IrrigationPage() {
   const cropDisplayName = activeCrop?.cropName || cropDetails.displayName || 'Ragi / Finger Millet'
   const cropImage = activeCrop?.image || cropDetails.image || '/crops/ragi.jpg'
 
-  // Farm metadata
-  const farmName = activeCrop?.farmName || activeFarm?.name || 'chaitu'
-  const farmArea = activeCrop?.area
-    ? `${activeCrop.area} ha`
-    : activeFarm?.total_area
-      ? `${activeFarm.total_area} ha`
-      : '6 ha'
+  // Farm metadata: Active Farm is primary identifier
+  const farmName = activeFarm?.name || activeCrop?.farmName || 'Active Farm'
+  const farmArea = activeFarm?.total_area
+    ? `${activeFarm.total_area} ha`
+    : activeCrop?.area
+      ? `${activeCrop.area} ha`
+      : '4 ha'
   const farmLocation =
-    activeCrop?.location ||
-    [activeFarm?.village, activeFarm?.district, activeFarm?.state].filter(Boolean).join(', ') ||
-    'Vizianagaram'
+    [activeFarm?.village, activeFarm?.mandal, activeFarm?.district, activeFarm?.state].filter(Boolean).join(', ') ||
+    activeFarm?.location ||
+    activeLocation.district ||
+    'Location unavailable'
 
   // Profile and crop stage
   const profile = CROP_PROFILES[rawCropName] || {
@@ -184,69 +185,81 @@ export function IrrigationPage() {
 
   // 7. Fetch live Weather data for the active farm coordinates
   useEffect(() => {
+    if (!activeFarm?.id) return
     let isCancelled = false
     setWeatherLoading(true)
 
-    const lat = activeFarm?.latitude || activeLocation?.latitude || 18.1067
-    const lon = activeFarm?.longitude || activeLocation?.longitude || 83.3956
+    const farmId = activeFarm.id
+    console.log("FARM CHANGED:", farmId)
+    console.log("FARM LOCATION:", farmLocation)
 
-    // First attempt weather API proxy
-    Promise.allSettled([weatherApi.current(lat, lon), weatherApi.forecast(lat, lon)])
-      .then(async ([currRes, foreRes]) => {
-        if (isCancelled) return
+    const lat = activeFarm.latitude || (activeLocation.farmId === farmId ? activeLocation.latitude : null)
+    const lon = activeFarm.longitude || (activeLocation.farmId === farmId ? activeLocation.longitude : null)
+    const state = activeFarm.state || activeLocation.state
+    const district = activeFarm.district || activeLocation.district
 
-        let tempVal = 27.8
-        let rainVal = 46
-        let periodVal = 'Next 3 days'
-        let hasLive = false
+    const runWeatherFetch = async () => {
+      let tempVal = 27.8
+      let rainVal = 46
+      let periodVal = 'Next 3 days'
+      let hasLive = false
 
-        if (currRes.status === 'fulfilled' && currRes.value?.temperature != null) {
-          tempVal = currRes.value.temperature
-          hasLive = true
-        }
-
-        if (foreRes.status === 'fulfilled' && foreRes.value?.forecast?.length) {
-          const forecastList = foreRes.value.forecast
-          hasLive = true
-          // Calculate 3-day rainfall projection
-          const daysCount = Math.min(forecastList.length, 3)
-          const sumProb = forecastList
-            .slice(0, daysCount)
-            .reduce((acc: number, d: any) => acc + (d.rainfall_probability || 0), 0)
-          rainVal = Math.round(sumProb > 0 ? (sumProb / daysCount) * 0.8 : 46)
-          periodVal = `Next ${daysCount} days`
-        } else if (activeFarm?.state && activeFarm?.district) {
-          // Fallback to district crop dataset
-          try {
-            const cropData = await agriculturalDataService.getCropData(activeFarm.state, activeFarm.district)
-            if (cropData.found) {
-              if (cropData.temperature != null) tempVal = cropData.temperature
-              if (cropData.rainfall != null) {
-                // Seasonal rainfall normalized to 3-day projection
-                rainVal = Math.round(cropData.rainfall / 25)
-                periodVal = 'Next 3 days'
-              }
-            }
-          } catch {
-            // keep standard
+      if (lat && lon) {
+        try {
+          const [currRes, foreRes] = await Promise.allSettled([
+            weatherApi.current(lat, lon),
+            weatherApi.forecast(lat, lon),
+          ])
+          if (currRes.status === 'fulfilled' && currRes.value?.temperature != null) {
+            tempVal = currRes.value.temperature
+            hasLive = true
           }
+          if (foreRes.status === 'fulfilled' && foreRes.value?.forecast?.length) {
+            const forecastList = foreRes.value.forecast
+            hasLive = true
+            const daysCount = Math.min(forecastList.length, 3)
+            const sumProb = forecastList
+              .slice(0, daysCount)
+              .reduce((acc: number, d: any) => acc + (d.rainfall_probability || 0), 0)
+            rainVal = Math.round(sumProb > 0 ? (sumProb / daysCount) * 0.8 : 46)
+            periodVal = `Next ${daysCount} days`
+          }
+        } catch {
+          // fallback to dataset
         }
+      }
 
-        if (!isCancelled) {
-          setTemperature(`${tempVal.toFixed(1)}°C`)
-          setRainfallMm(rainVal)
-          setForecastPeriod(periodVal)
-          setIsLiveWeather(hasLive)
+      if (!hasLive && state && district) {
+        try {
+          const cropData = await agriculturalDataService.getCropData(state, district)
+          if (cropData.found) {
+            if (cropData.temperature != null) tempVal = cropData.temperature
+            if (cropData.rainfall != null) {
+              rainVal = Math.round(cropData.rainfall / 25)
+              periodVal = 'Next 3 days'
+            }
+          }
+        } catch {
+          // ignore
         }
-      })
-      .finally(() => {
-        if (!isCancelled) setWeatherLoading(false)
-      })
+      }
+
+      if (!isCancelled) {
+        console.log("WEATHER RESPONSE:", { temperature: tempVal, rainfall_mm: rainVal, period: periodVal })
+        setTemperature(`${tempVal.toFixed(1)}°C`)
+        setRainfallMm(rainVal)
+        setForecastPeriod(periodVal)
+        setIsLiveWeather(hasLive)
+        setWeatherLoading(false)
+      }
+    }
+
+    runWeatherFetch()
 
     return () => {
       isCancelled = true
     }
-  }, [activeFarm?.latitude, activeFarm?.longitude, activeFarm?.state, activeFarm?.district, activeLocation])
+  }, [activeFarm?.id, activeFarm?.latitude, activeFarm?.longitude, activeFarm?.state, activeFarm?.district, activeLocation.latitude, activeLocation.longitude, farmLocation])
 
   // 8. Dynamic Irrigation Engine & Water Calculation
   const isMoistureOptimal = soilMoisture >= targetMoisture
@@ -326,13 +339,29 @@ export function IrrigationPage() {
             </p>
           </div>
         </div>
-
-        {isLiveWeather && (
-          <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
-            Live Telemetry
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          <div className="flex h-9 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 text-xs font-bold text-neutral-800 shadow-2xs">
+            <Home className="h-3.5 w-3.5 text-emerald-800 shrink-0" />
+            <select
+              value={selectedFarmId?.toString() || activeFarm?.id?.toString() || ''}
+              onChange={(e) => setSelectedFarmId(Number(e.target.value))}
+              className="bg-transparent border-none text-xs font-bold text-neutral-800 focus:outline-hidden cursor-pointer"
+            >
+              {farms.map((f) => (
+                <option key={f.id} value={f.id.toString()}>
+                  {f.name} {f.district ? `(${f.district})` : ''}
+                </option>
+              ))}
+            </select>
+            {(soilLoading || weatherLoading) && <span className="text-[10px] text-neutral-400 animate-pulse">Loading...</span>}
+          </div>
+          {isLiveWeather && (
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              Live Telemetry
+            </span>
+          )}
+        </div>
       </div>
 
       {/* ============================================================== */}

@@ -130,6 +130,8 @@ export interface YieldPredictionResult {
   crop: string
   feature_importance: { label: string; importance: number }[]
   demo_mode: boolean
+  is_model_supported?: boolean
+  unsupported_message?: string
 }
 
 export interface DashboardOverview {

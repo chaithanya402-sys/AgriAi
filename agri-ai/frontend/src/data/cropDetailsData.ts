@@ -1,11 +1,19 @@
+import { cropCatalog, normalizeCropName, getAllCatalogCrops, type CatalogCropItem } from './cropCatalog'
+
 export type CropCategory =
   | 'Cereals'
+  | 'Millets'
   | 'Pulses'
   | 'Oilseeds'
+  | 'Fiber Crops'
+  | 'Commercial Crops'
   | 'Vegetables'
   | 'Fruits'
   | 'Spices'
   | 'Plantation'
+  | 'Flowers'
+  | 'Medicinal & Aromatic'
+  | 'Fodder'
 
 export interface CropSoilRequirements {
   soilType: string
@@ -84,12 +92,18 @@ export interface CropDetailInfo {
 export const CROP_CATEGORIES: Array<{ key: 'all' | CropCategory; label: string }> = [
   { key: 'all', label: 'All' },
   { key: 'Cereals', label: 'Cereals' },
+  { key: 'Millets', label: 'Millets' },
   { key: 'Pulses', label: 'Pulses' },
   { key: 'Oilseeds', label: 'Oilseeds' },
+  { key: 'Fiber Crops', label: 'Fiber Crops' },
+  { key: 'Commercial Crops', label: 'Commercial Crops' },
   { key: 'Vegetables', label: 'Vegetables' },
   { key: 'Fruits', label: 'Fruits' },
   { key: 'Spices', label: 'Spices' },
   { key: 'Plantation', label: 'Plantation' },
+  { key: 'Flowers', label: 'Flowers' },
+  { key: 'Medicinal & Aromatic', label: 'Medicinal & Aromatic' },
+  { key: 'Fodder', label: 'Fodder' },
 ]
 
 export const CROP_DETAILS_MAP: Record<string, CropDetailInfo> = {
@@ -3204,13 +3218,52 @@ export function getCropDetails(cropName: string): CropDetailInfo {
   if (lower.includes('jute')) return CROP_DETAILS_MAP.Jute
   if (lower.includes('pulse')) return CROP_DETAILS_MAP.Pulses
 
+  // Check central catalog via normalized crop ID
+  const canonicalId = normalizeCropName(cropName)
+  const catalogItem = cropCatalog[canonicalId]
+  if (catalogItem) {
+    return {
+      name: catalogItem.name,
+      displayName: catalogItem.displayName,
+      category: catalogItem.category,
+      image: catalogItem.image,
+      fallbackIcon: catalogItem.fallbackIcon,
+      description: catalogItem.description,
+      purpose: catalogItem.purpose,
+      majorUses: catalogItem.commonUses,
+      suitabilitySummary: catalogItem.suitabilitySummary,
+      soilRequirements: catalogItem.soilRequirements,
+      climateRequirements: catalogItem.climateRequirements,
+      farmingRequirements: catalogItem.farmingRequirements,
+      advantages: catalogItem.advantages,
+      considerations: catalogItem.considerations,
+      benchmarkYield: catalogItem.benchmarkYield,
+      districtAvgYield: catalogItem.districtAvgYield,
+      stateAvgYield: catalogItem.stateAvgYield,
+      benchmarkRevenue: catalogItem.benchmarkRevenue,
+      benchmarkCost: catalogItem.benchmarkCost,
+      benchmarkProfit: catalogItem.benchmarkProfit,
+      benchmarkROI: catalogItem.benchmarkROI,
+      matchScore: catalogItem.matchScore,
+      riskLevel: catalogItem.riskLevel,
+      productionTonnes: catalogItem.productionTonnes,
+    }
+  }
+
   // Fallback to Soybean
   return CROP_DETAILS_MAP.Soybean
 }
 
 /**
- * Returns the complete master catalog of all 39 crops
+ * Returns the master catalog of original 39 crops
  */
 export function getAll39CropsList(): CropDetailInfo[] {
   return Object.values(CROP_DETAILS_MAP)
+}
+
+/**
+ * Returns all crops in the central catalog converted to CropDetailInfo
+ */
+export function getAllCatalogCropsList(): CropDetailInfo[] {
+  return getAllCatalogCrops().map((item) => getCropDetails(item.id))
 }

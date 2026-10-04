@@ -38,15 +38,21 @@ class DiseaseDetectionService:
         if not _looks_like_image(image_bytes):
             raise HTTPException(status_code=400, detail="Please upload a valid image")
 
-        # (a) Open and standardize the image.
+        # (a) First, attempt real image classification using Google Gemini Multimodal Vision AI
+        if getattr(settings, "GEMINI_API_KEY", None):
+            gemini_result = self._predict_with_gemini(image_bytes, filename)
+            if gemini_result is not None:
+                return gemini_result
+
+        # (b) Open and standardize the image.
         img = _open_image(image_bytes)
         if img is None:
             raise HTTPException(status_code=400, detail="Please upload a valid image")
 
-        # (b) Extract simple features.
+        # (c) Extract simple features.
         features = _extract_features(img)
 
-        # (c) Route between demo and real classifier.
+        # (d) Route between demo and real classifier.
         if not settings.DEMO_MODE:
             result = self._predict_with_keras(img, features)
             if result is not None:
@@ -62,6 +68,121 @@ class DiseaseDetectionService:
             "demo_mode": True,
             "image_processed": True,
         }
+
+    def _predict_with_gemini(self, image_bytes: bytes, filename: str) -> Dict:
+        """Analyze plant leaf with Gemini Multimodal Vision AI using the provided API key."""
+        api_key = getattr(settings, "GEMINI_API_KEY", None)
+        if not api_key:
+            return None
+
+        import base64
+        import requests
+        import json
+
+        # Infer mime type
+        mime_type = "image/jpeg"
+        lower = filename.lower()
+        if lower.endswith(".png"):
+            mime_type = "image/png"
+        elif lower.endswith(".webp"):
+            mime_type = "image/webp"
+
+        b64_data = base64.b64encode(image_bytes).decode("utf-8")
+
+        prompt = """You are an expert plant pathologist and agronomist.
+Analyze this agricultural crop image.
+Perform a clinical disease and health evaluation:
+1. Detect the crop/plant species (e.g. Rice, Maize, Tomato, Cotton, Soybean, Wheat, etc.).
+2. Determine whether it is Healthy or has a disease, pest damage, or nutrient deficiency.
+3. Provide the specific diagnosis or condition name (e.g. "Healthy", "Rice Blast", "Bacterial Leaf Blight", "Northern Corn Leaf Blight", "Yellow Mosaic Virus", "Powdery Mildew", "Early Blight", etc.).
+4. Provide a confidence score between 0.50 and 0.99.
+5. Provide a probability breakdown for the top 4-5 related conditions (must sum to approximately 1.0).
+6. Provide a concise, clear description of observed symptoms or healthy foliage characteristics.
+7. Provide 3-4 actionable treatment or prevention steps suitable for farmers (organic or chemical recommendations with exact dosages where applicable).
+
+Respond strictly in valid JSON matching this format:
+{
+  "prediction": "Condition Name",
+  "crop_detected": "Crop Name",
+  "confidence": 0.95,
+  "is_healthy": false,
+  "probabilities": {
+    "Primary Diagnosis": 0.90,
+    "Alternative 1": 0.05,
+    "Alternative 2": 0.03,
+    "Healthy": 0.02
+  },
+  "description": "Observed symptoms on foliage...",
+  "treatment": [
+    "Step 1...",
+    "Step 2...",
+    "Step 3..."
+  ]
+}"""
+
+        payload = {
+            "contents": [{
+                "parts": [
+                    {"text": prompt},
+                    {"inline_data": {"mime_type": mime_type, "data": b64_data}}
+                ]
+            }],
+            "generationConfig": {
+                "response_mime_type": "application/json"
+            }
+        }
+
+        # Multi-model cascade for fast & resilient response
+        models_to_try = [
+            "gemini-3.5-flash",
+            "gemini-3.8-flash",
+            "gemini-flash-latest",
+            "gemini-3.7-flash",
+        ]
+
+        for model in models_to_try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            try:
+                res = requests.post(url, json=payload, timeout=25)
+                if res.status_code == 200:
+                    data = res.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        text = candidates[0]["content"]["parts"][0]["text"]
+                        parsed = json.loads(text)
+
+                        pred = str(parsed.get("prediction", "Unknown")).strip()
+                        conf = float(parsed.get("confidence", 0.92))
+                        is_healthy = bool(parsed.get("is_healthy", "healthy" in pred.lower()))
+                        probs = parsed.get("probabilities", {})
+                        if not probs:
+                            probs = {pred: conf}
+                            if is_healthy:
+                                probs["Leaf Blight"] = round(1.0 - conf, 3)
+                            else:
+                                probs["Healthy"] = round(1.0 - conf, 3)
+
+                        desc = str(parsed.get("description", ""))
+                        treat = list(parsed.get("treatment", []))
+                        crop_det = str(parsed.get("crop_detected", ""))
+
+                        return {
+                            "prediction": pred,
+                            "confidence": round(conf, 4),
+                            "probabilities": probs,
+                            "is_healthy": is_healthy,
+                            "description": desc,
+                            "treatment": treat,
+                            "crop_detected": crop_det,
+                            "ai_model": model,
+                            "demo_mode": False,
+                            "image_processed": True,
+                        }
+            except Exception:
+                continue
+
+        return None
+
 
     def _predict_with_keras(self, img: Image.Image, features: Dict) -> Dict:
         """Attempt a real Keras prediction; return None on any failure."""

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Check,
   CheckCircle2,
@@ -64,6 +65,7 @@ export function FarmPlanContent({
   onBack,
   isModal = false,
 }: FarmPlanContentProps) {
+  const navigate = useNavigate()
   const { activateCropPlan, currentFarm } = useFarm()
   const [activeStepId, setActiveStepId] = useState<number>(1)
   const [completedTaskIds, setCompletedTaskIds] = useState<string[]>([])
@@ -762,13 +764,17 @@ export function FarmPlanContent({
                         </p>
                       </div>
                     </div>
-                    <a
-                      href={`/dashboard/fertilizer?crop=${encodeURIComponent(cropDetails.name)}`}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleActivatePlan()
+                        navigate('/dashboard/fertilizer')
+                      }}
                       className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-[#123B22] px-3.5 py-2 text-xs font-extrabold text-white hover:bg-[#0E2F1B] transition-colors shadow-2xs"
                     >
                       <span>Open Fertilizer Plan</span>
                       <ArrowRight className="h-3.5 w-3.5" />
-                    </a>
+                    </button>
                   </div>
                 )}
 

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, List, Optional
 
 
 class DiseasePredictionResponse(BaseModel):
@@ -8,6 +8,10 @@ class DiseasePredictionResponse(BaseModel):
     probabilities: Dict[str, float]
     is_healthy: bool
     low_confidence: bool
-    message: str
+    message: Optional[str] = ""
     demo_mode: bool
     image_processed: bool
+    crop_detected: Optional[str] = None
+    description: Optional[str] = None
+    treatment: Optional[List[str]] = None
+    ai_model: Optional[str] = None

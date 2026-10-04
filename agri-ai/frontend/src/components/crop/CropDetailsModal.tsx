@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
   X,
@@ -41,6 +42,7 @@ import { formatNumber, formatCurrency, cn } from '@/lib/utils'
 import { getCropDetails, type CropDetailInfo } from '@/data/cropDetailsData'
 import type { CropOption, Farm } from '@/types'
 import { FarmPlanModal } from './FarmPlanModal'
+import { useFarm } from '@/components/farm/FarmContext'
 
 interface CropDetailsModalProps {
   crop: CropOption | null
@@ -85,6 +87,7 @@ export function CropDetailsModal({
   const [podImgError, setPodImgError] = useState(false)
   const [selectedSuccess, setSelectedSuccess] = useState(false)
   const [showFarmPlanModal, setShowFarmPlanModal] = useState(false)
+  const { activeCrop } = useFarm()
 
   // Close on Escape key
   useEffect(() => {
@@ -152,13 +155,23 @@ export function CropDetailsModal({
     { name: 'State Avg.', yield: details.stateAvgYield, fill: '#8BB4E7' },
   ]
 
-  const handleSelect = () => {
-    onSelectCrop(crop.crop)
+  const navigate = useNavigate()
+
+  const cleanCrop = crop?.crop?.toLowerCase()?.trim() || ''
+  const isAlreadyActive = Boolean(activeCrop) && (
+    activeCrop?.rawCropName?.toLowerCase() === cleanCrop ||
+    activeCrop?.cropName?.toLowerCase()?.includes(cleanCrop) ||
+    cleanCrop.includes(activeCrop?.rawCropName?.toLowerCase() || '___')
+  )
+
+  const handleActivateCrop = () => {
     setSelectedSuccess(true)
-    setTimeout(() => {
-      setSelectedSuccess(false)
-      setShowFarmPlanModal(true)
-    }, 800)
+    onSelectCrop(crop.crop)
+  }
+
+  const handleOpenPlan = () => {
+    onSelectCrop(crop.crop)
+    setShowFarmPlanModal(true)
   }
 
   return (
@@ -871,10 +884,10 @@ export function CropDetailsModal({
                       </p>
                       <button
                         type="button"
-                        onClick={() => setShowFarmPlanModal(true)}
+                        onClick={handleOpenPlan}
                         className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#123B22] hover:bg-[#2E7D32] rounded-xl shadow-xs transition-colors"
                       >
-                        <span>View Complete Farm Plan</span>
+                        <span>Open Crop Action Plan</span>
                         <span>→</span>
                       </button>
                     </div>
@@ -982,7 +995,7 @@ export function CropDetailsModal({
                     </div>
                     <button
                       type="button"
-                      onClick={() => setShowFarmPlanModal(true)}
+                      onClick={handleOpenPlan}
                       className="px-4 py-2 text-xs font-bold text-white bg-[#123B22] rounded-xl hover:bg-[#2E7D32]"
                     >
                       Open Full Interactive Roadmap
@@ -1020,31 +1033,31 @@ export function CropDetailsModal({
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <button
                 type="button"
-                onClick={() => setShowFarmPlanModal(true)}
+                onClick={handleOpenPlan}
                 className="flex-1 sm:flex-initial px-5 py-2.5 text-xs sm:text-sm font-bold text-[#123B22] bg-[#EAF6EA] border border-[#2E7D32]/30 rounded-xl hover:bg-[#EAF6EA]/80 transition-colors shadow-2xs"
               >
-                View Complete Farm Plan
+                View Action Plan →
               </button>
 
               <button
                 type="button"
-                onClick={handleSelect}
+                onClick={handleActivateCrop}
                 className={cn(
                   'flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 text-xs sm:text-sm font-bold text-white rounded-xl shadow-sm transition-all',
-                  selectedSuccess
+                  selectedSuccess || isAlreadyActive
                     ? 'bg-emerald-800 scale-95'
                     : 'bg-[#2E7D32] hover:bg-[#123B22] hover:shadow-md'
                 )}
               >
-                {selectedSuccess ? (
+                {selectedSuccess || isAlreadyActive ? (
                   <>
-                    <CheckCheck className="h-4 w-4 animate-bounce" />
-                    Selected for {farmDisplayName}!
+                    <CheckCheck className="h-4 w-4 animate-bounce text-emerald-300" />
+                    <span>{crop.crop} Active Crop</span>
                   </>
                 ) : (
                   <>
-                    <Check className="h-4 w-4 stroke-[2.5]" />
-                    Select This Crop
+                    <Sprout className="h-4 w-4" />
+                    <span>Activate Crop</span>
                   </>
                 )}
               </button>

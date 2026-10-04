@@ -36,7 +36,7 @@ import {
 } from 'lucide-react'
 
 export function DashboardPage() {
-  const { farms, currentFarm, activeLocation, activeLocationLoading, setSelectedFarmId, loading: farmsLoading } = useFarm()
+  const { farms, currentFarm, activeLocation, activeLocationLoading, setSelectedFarmId, loading: farmsLoading, activeCrop } = useFarm()
   const { user } = useAuth()
   const { t } = useLanguage()
   const [farmDropdownOpen, setFarmDropdownOpen] = useState(false)
@@ -429,6 +429,62 @@ export function DashboardPage() {
             lon={(activeLocation.farmId === currentFarm.id ? activeLocation.longitude : null) ?? currentFarm.longitude ?? null}
           />
         </div>
+      )}
+
+      {/* Synchronized Active Crop Banner */}
+      {activeCrop && (
+        <Card className="overflow-hidden border border-emerald-200/90 bg-gradient-to-r from-emerald-50/70 to-white shadow-2xs">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="relative h-16 w-16 sm:h-18 sm:w-18 shrink-0 overflow-hidden rounded-2xl border border-emerald-200 shadow-2xs bg-emerald-100">
+                  <img
+                    src={activeCrop.image || '/crops/ragi.jpg'}
+                    alt={activeCrop.cropName}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      ;(e.target as HTMLImageElement).src =
+                        'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=400&q=80'
+                    }}
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 uppercase tracking-wide">
+                      Active Crop
+                    </span>
+                    <span className="text-xs text-neutral-500 font-medium">
+                      {activeCrop.cropCategory || 'Crops'}
+                    </span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-[#17231A] mt-0.5">
+                    {activeCrop.cropName}
+                  </h3>
+                  <p className="text-xs text-neutral-600 font-medium mt-0.5">
+                    Stage: <strong className="text-neutral-900">{activeCrop.cropStage || 'Vegetative'}</strong> • Area: {activeCrop.area} ha • Farm: {activeCrop.farmName}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  to="/dashboard/action-plan"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#123B22] text-white text-xs font-bold hover:bg-[#0E2F1B] transition-colors shadow-2xs"
+                >
+                  <Sprout className="h-3.5 w-3.5" />
+                  <span>View Action Plan</span>
+                </Link>
+                <Link
+                  to="/dashboard/yield"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-neutral-200 text-neutral-800 text-xs font-bold hover:bg-neutral-50 transition-colors shadow-2xs"
+                >
+                  <Wheat className="h-3.5 w-3.5 text-emerald-800" />
+                  <span>Yield Analysis</span>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Farm Selector (if multiple farms) */}

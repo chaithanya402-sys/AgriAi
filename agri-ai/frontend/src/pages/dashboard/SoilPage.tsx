@@ -47,6 +47,8 @@ const statusConfig: Record<
   High: { icon: AlertTriangle, color: 'text-danger', progressColor: 'bg-danger' },
 }
 
+const farmSoilCache = new Map<number, FarmSoilData>()
+
 export function SoilPage() {
   const { farms, selectedFarmId, setSelectedFarmId, currentFarm, activeLocation, loading: farmsLoading } = useFarm()
   const { data: analyzeResult, loading: analyzing, error: analyzeError, run } = useAsync<SoilAnalysisResult & { demo_mode?: boolean }>()
@@ -61,25 +63,57 @@ export function SoilPage() {
     moisture: '',
   })
 
+  // Action-driven states: Form input vs Executed result separation
+  const [hasExecuted, setHasExecuted] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+  const [submittedAnalysis, setSubmittedAnalysis] = useState<SoilAnalysisResult | null>(null)
+  const [submittedFingerprint, setSubmittedFingerprint] = useState<string | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
+
   const [soilLoading, setSoilLoading] = useState(false)
   const [soilError, setSoilError] = useState<string | null>(null)
   const [soilData, setSoilData] = useState<FarmSoilData | null>(null)
-  const [activeAnalysis, setActiveAnalysis] = useState<SoilAnalysisResult | null>(null)
 
   const activeFarm = farms.find((f) => f.id === selectedFarmId) || currentFarm || null
 
-  // Automatically fetch farm-specific soil data whenever selected farm changes
+  const getSoilFingerprint = (f: typeof form, farmId: string | number | undefined) => {
+    return `${farmId}_${f.nitrogen}_${f.phosphorus}_${f.potassium}_${f.ph}_${f.organic_carbon}_${f.moisture}`
+  }
+
+  // Automatically fetch farm-specific soil data to populate form, WITHOUT running analysis
   useEffect(() => {
     if (!activeFarm?.id) return
 
     const targetFarmId = activeFarm.id
     let isCancelled = false
 
-    setSoilLoading(true)
     setSoilError(null)
-    // Clear previous farm's values and analysis immediately
+    setValidationError(null)
+    // Clear previous farm's analysis results
+    setSubmittedAnalysis(null)
+    setHasExecuted(false)
+    setIsDirty(false)
+    setSubmittedFingerprint(null)
+
+    // Check fast client-side cache first
+    const cached = farmSoilCache.get(targetFarmId)
+    if (cached) {
+      setSoilData(cached)
+      setForm({
+        farm_id: String(targetFarmId),
+        nitrogen: cached.nitrogen != null ? String(cached.nitrogen) : '',
+        phosphorus: cached.phosphorus != null ? String(cached.phosphorus) : '',
+        potassium: cached.potassium != null ? String(cached.potassium) : '',
+        ph: cached.ph != null ? String(cached.ph) : '',
+        organic_carbon: cached.organicCarbon != null ? String(cached.organicCarbon) : 'Not available',
+        moisture: cached.moisture != null ? String(cached.moisture) : '',
+      })
+      setSoilLoading(false)
+      return
+    }
+
+    setSoilLoading(true)
     setSoilData(null)
-    setActiveAnalysis(null)
 
     soilApi
       .getFarmSoil(targetFarmId)
@@ -87,14 +121,9 @@ export function SoilPage() {
         if (isCancelled) return
 
         // Data validation: verify that the returned data belongs to the selected farmId
-        if (data.farmId !== targetFarmId) {
+        if (data.farmId && Number(data.farmId) !== Number(targetFarmId)) {
           return
         }
-
-        // Required debug logs
-        console.log("Selected Farm ID:", targetFarmId)
-        console.log("Selected Farm:", activeFarm)
-        console.log("Soil Data:", data)
 
         if (!data.found) {
           setSoilError("Soil data is not available for this location.")
@@ -107,14 +136,14 @@ export function SoilPage() {
             organic_carbon: '',
             moisture: '',
           })
-          setSoilLoading(false)
           return
         }
 
+        farmSoilCache.set(targetFarmId, data)
         setSoilData(data)
         setSoilError(null)
 
-        // Populate form inputs with returned soil values
+        // Populate form inputs with returned soil values ONLY
         setForm({
           farm_id: String(targetFarmId),
           nitrogen: data.nitrogen != null ? String(data.nitrogen) : '',
@@ -124,25 +153,16 @@ export function SoilPage() {
           organic_carbon: data.organicCarbon != null ? String(data.organicCarbon) : 'Not available',
           moisture: data.moisture != null ? String(data.moisture) : '',
         })
-
-        // Immediate analysis results for this farm's soil
-        if (data.healthScore != null && data.grade) {
-          setActiveAnalysis({
-            id: 0,
-            health_score: data.healthScore,
-            grade: data.grade,
-            nutrients: data.nutrients || [],
-            recommendations: data.recommendations || [],
-            explanation: data.explanation || '',
-          })
-        }
-        setSoilLoading(false)
       })
       .catch((err) => {
         if (isCancelled) return
         console.error("Failed to load soil data for farm:", err)
         setSoilError("Soil data is not available for this location.")
-        setSoilLoading(false)
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setSoilLoading(false)
+        }
       })
 
     return () => {
@@ -153,14 +173,45 @@ export function SoilPage() {
   const handleFarmSelect = (idStr: string) => {
     const id = Number(idStr)
     setSelectedFarmId(id)
+    setSubmittedAnalysis(null)
+    setHasExecuted(false)
+    setIsDirty(false)
+    setSubmittedFingerprint(null)
+    setValidationError(null)
   }
 
   const handleChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => {
+      const next = { ...prev, [field]: value }
+      if (hasExecuted || submittedFingerprint) {
+        if (getSoilFingerprint(next, activeFarm?.id) !== submittedFingerprint) {
+          setIsDirty(true)
+          setHasExecuted(false)
+          setSubmittedAnalysis(null)
+        }
+      }
+      return next
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setValidationError(null)
+
+    const n = Number(form.nitrogen)
+    const p = Number(form.phosphorus)
+    const k = Number(form.potassium)
+    const phVal = Number(form.ph)
+
+    if ([n, p, k, phVal].some((v) => isNaN(v) || v < 0)) {
+      setValidationError('Please enter valid non-negative numbers for Nitrogen, Phosphorus, Potassium, and pH.')
+      return
+    }
+    if (phVal < 0 || phVal > 14) {
+      setValidationError('Soil pH must be between 0 and 14.')
+      return
+    }
+
     const ocValue =
       form.organic_carbon === 'Not available' || !form.organic_carbon
         ? 0
@@ -169,22 +220,24 @@ export function SoilPage() {
     // Moisture is optional — default to 50 if blank (not in AP village dataset)
     const moistureValue = form.moisture ? Number(form.moisture) : 50
 
-    // Clear previous analysis so the new result always shows
-    setActiveAnalysis(null)
+    const currentFingerprint = getSoilFingerprint(form, activeFarm?.id)
 
     const res = await run(() =>
       soilApi.analyze({
         farm_id: activeFarm?.id,
-        nitrogen: Number(form.nitrogen),
-        phosphorus: Number(form.phosphorus),
-        potassium: Number(form.potassium),
-        ph: Number(form.ph),
+        nitrogen: n,
+        phosphorus: p,
+        potassium: k,
+        ph: phVal,
         organic_carbon: ocValue,
         moisture: moistureValue,
       })
     )
     if (res) {
-      setActiveAnalysis(res)
+      setSubmittedAnalysis(res)
+      setHasExecuted(true)
+      setIsDirty(false)
+      setSubmittedFingerprint(currentFingerprint)
     }
   }
 
@@ -204,8 +257,7 @@ export function SoilPage() {
     )
   }
 
-  // analyzeResult (from manual button click) always wins over auto-loaded analysis
-  const displayResult = analyzeResult || activeAnalysis
+  const displayResult = submittedAnalysis
 
   return (
     <div className="space-y-6">
@@ -355,12 +407,28 @@ export function SoilPage() {
                 })()}
               </div>
               <Button type="submit" disabled={analyzing || soilLoading}>
-                {analyzing ? <ButtonLoader label="Analyzing..." /> : 'Analyze Soil'}
+                {analyzing ? <ButtonLoader label="Analyzing soil..." /> : 'Analyze Soil'}
               </Button>
             </div>
           </form>
         </CardContent>
       </Card>
+
+      {/* Stale Parameters Alert */}
+      {isDirty && (
+        <Alert variant="warning" className="border-amber-300 bg-amber-50 text-amber-900">
+          <AlertTriangle className="h-4 w-4 text-amber-700" />
+          <span>Soil parameters changed. Click Analyze Soil to update the analysis.</span>
+        </Alert>
+      )}
+
+      {/* Validation Error */}
+      {validationError && (
+        <Alert variant="danger">
+          <AlertTriangle className="h-4 w-4" />
+          <span>{validationError}</span>
+        </Alert>
+      )}
 
       {/* Village-level soil data panel — shown when AP dataset match found */}
       {soilData?.found && !soilLoading && (soilData.ec != null || soilData.soilType || soilData.fertilityIndex) && (
@@ -536,8 +604,8 @@ export function SoilPage() {
         </Alert>
       )}
 
-      {/* Results */}
-      {displayResult && !soilLoading && (
+      {/* Results or Initial Empty State */}
+      {hasExecuted && displayResult && !isDirty && !soilLoading ? (
         <div className="space-y-6">
           {/* Score & Grade */}
           <div className="grid gap-4 md:grid-cols-2">
@@ -658,6 +726,21 @@ export function SoilPage() {
             </CardContent>
           </Card>
         </div>
+      ) : (
+        /* Initial Empty State */
+        !soilLoading && (
+          <Card className="rounded-2xl border border-neutral-200/90 bg-white p-8 sm:p-12 text-center shadow-xs">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-[#2E7D32] border border-emerald-200/80">
+              <FlaskConical className="h-7 w-7" />
+            </div>
+            <h3 className="mt-4 text-lg font-bold text-neutral-900">
+              Ready for soil analysis
+            </h3>
+            <p className="mx-auto mt-1.5 max-w-md text-xs sm:text-sm text-neutral-500 leading-relaxed">
+              Review the soil parameters, then click Analyze Soil.
+            </p>
+          </Card>
+        )
       )}
     </div>
   )

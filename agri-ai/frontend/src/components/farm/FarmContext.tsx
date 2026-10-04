@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback,
 import { farmApi } from '@/services/api'
 import { agriculturalDataService } from '@/services/agriculturalDataService'
 import { getCropDetails } from '@/data/cropDetailsData'
+import { normalizeCropName, cropCatalog, cropImages } from '@/data/cropCatalog'
 import type { Farm } from '@/types'
 
 export interface ActiveFarmLocation {
@@ -18,6 +19,9 @@ export interface ActiveCrop {
   cropId?: string
   cropName: string
   rawCropName: string
+  cropCategory?: string
+  scientificName?: string
+  source?: string
   farmId: number | string
   farmName: string
   location: string
@@ -26,6 +30,7 @@ export interface ActiveCrop {
   area: number
   soilType?: string
   cropStage: string
+  variety?: string
   season?: string
   nitrogen: number
   phosphorus: number
@@ -93,9 +98,21 @@ export function FarmProvider({ children }: { children: ReactNode }) {
       return id
     })
     if (id !== null && id !== undefined) {
+      console.log("FARM CHANGED:", id)
       localStorage.setItem('agriai_selected_farm_id', String(id))
+      try {
+        const farmCrop = localStorage.getItem(`agriai_active_crop_${id}`)
+        if (farmCrop) {
+          setActiveCropState(JSON.parse(farmCrop))
+        } else {
+          setActiveCropState(null)
+        }
+      } catch {
+        setActiveCropState(null)
+      }
     } else {
       localStorage.removeItem('agriai_selected_farm_id')
+      setActiveCropState(null)
     }
   }, [])
 
@@ -227,9 +244,14 @@ export function FarmProvider({ children }: { children: ReactNode }) {
     [setSelectedFarmId]
   )
 
-  // Active Crop State (Single Source of Truth across the application)
+  // Active Crop State (Farm-scoped Single Source of Truth across the application)
   const [activeCrop, setActiveCropState] = useState<ActiveCrop | null>(() => {
     try {
+      const savedFarmId = localStorage.getItem('agriai_selected_farm_id')
+      if (savedFarmId) {
+        const farmSaved = localStorage.getItem(`agriai_active_crop_${savedFarmId}`)
+        if (farmSaved) return JSON.parse(farmSaved)
+      }
       const saved = localStorage.getItem('agriai_active_crop')
       if (saved) return JSON.parse(saved)
     } catch (e) {
@@ -238,16 +260,55 @@ export function FarmProvider({ children }: { children: ReactNode }) {
     return null
   })
 
+  // Synchronize activeCrop whenever currentFarm changes
+  useEffect(() => {
+    if (currentFarm?.id) {
+      try {
+        const farmCrop = localStorage.getItem(`agriai_active_crop_${currentFarm.id}`)
+        if (farmCrop) {
+          setActiveCropState(JSON.parse(farmCrop))
+          return
+        }
+        // Fallback: check global active crop
+        const legacy = localStorage.getItem('agriai_active_crop')
+        if (legacy) {
+          const parsed = JSON.parse(legacy)
+          const updated = {
+            ...parsed,
+            farmId: currentFarm.id,
+            farmName: currentFarm.name || parsed.farmName,
+            location: currentFarm.district || currentFarm.village || parsed.location,
+          }
+          setActiveCropState(updated)
+          localStorage.setItem(`agriai_active_crop_${currentFarm.id}`, JSON.stringify(updated))
+          return
+        }
+        setActiveCropState(null)
+      } catch {
+        setActiveCropState(null)
+      }
+    }
+  }, [currentFarm?.id, currentFarm?.name, currentFarm?.district, currentFarm?.village])
+
   const setActiveCrop = useCallback((crop: ActiveCrop | null) => {
     setActiveCropState(crop)
     if (crop) {
+      const fId = crop.farmId || selectedFarmId
+      if (fId) {
+        localStorage.setItem(`agriai_active_crop_${fId}`, JSON.stringify(crop))
+        localStorage.setItem(`agriai_selected_crop_${fId}`, crop.rawCropName)
+      }
       localStorage.setItem('agriai_active_crop', JSON.stringify(crop))
       localStorage.setItem('agriai_selected_crop', crop.rawCropName)
     } else {
+      if (selectedFarmId) {
+        localStorage.removeItem(`agriai_active_crop_${selectedFarmId}`)
+        localStorage.removeItem(`agriai_selected_crop_${selectedFarmId}`)
+      }
       localStorage.removeItem('agriai_active_crop')
       localStorage.removeItem('agriai_selected_crop')
     }
-  }, [])
+  }, [selectedFarmId])
 
   const activateCropPlan = useCallback(
     (cropData: Partial<ActiveCrop> & { cropName: string }): ActiveCrop => {
@@ -262,11 +323,23 @@ export function FarmProvider({ children }: { children: ReactNode }) {
         farms.find((f) => String(f.id) === String(cropData.farmId)) ||
         currentFarm
 
+      const canonicalId = normalizeCropName(cropData.cropName || raw)
+      const catalogItem = cropCatalog[canonicalId]
+      const canonicalImage =
+        cropData.image ||
+        catalogItem?.image ||
+        cropImages[canonicalId] ||
+        details.image ||
+        '/crops/ragi.jpg'
+
       const newActiveCrop: ActiveCrop = {
-        cropId: cropData.cropId || String(Date.now()),
-        cropName: details.displayName || cropData.cropName,
-        rawCropName: raw,
-        farmId: cropData.farmId ?? targetFarm?.id ?? 1,
+        cropId: cropData.cropId || canonicalId,
+        cropName: catalogItem?.displayName || details.displayName || cropData.cropName,
+        rawCropName: catalogItem?.name || raw,
+        cropCategory: cropData.cropCategory || catalogItem?.category || details.category || 'Cereals',
+        scientificName: cropData.scientificName || undefined,
+        source: 'crop-recommendation',
+        farmId: targetFarm?.id ?? cropData.farmId ?? 1,
         farmName: cropData.farmName || targetFarm?.name || 'Kharif Farm',
         location:
           cropData.location ||
@@ -279,11 +352,28 @@ export function FarmProvider({ children }: { children: ReactNode }) {
         soilType:
           cropData.soilType ||
           details.soilRequirements?.soilType ||
+          catalogItem?.soilRequirements?.soilType ||
           'Loamy / Clay',
         cropStage: cropData.cropStage || 'Vegetative (Day 31–45)',
+        variety:
+          cropData.variety ||
+          (raw.toLowerCase().includes('rice') || raw.toLowerCase().includes('paddy')
+            ? 'BPT 5204 (Samba Mahsuri)'
+            : raw.toLowerCase().includes('soybean')
+            ? 'JS 335'
+            : raw.toLowerCase().includes('maize') || raw.toLowerCase().includes('corn')
+            ? 'DHM 117'
+            : raw.toLowerCase().includes('cotton')
+            ? 'Bt Cotton (RCH 659)'
+            : raw.toLowerCase().includes('ragi') || raw.toLowerCase().includes('millet')
+            ? 'GPU 28'
+            : raw.toLowerCase().includes('wheat')
+            ? 'HD 2967'
+            : 'High-Yield Certified'),
         season:
           cropData.season ||
           details.climateRequirements?.season ||
+          catalogItem?.climateRequirements?.season ||
           'Kharif Season',
         nitrogen: cropData.nitrogen ?? 60,
         phosphorus: cropData.phosphorus ?? 40,
@@ -293,11 +383,11 @@ export function FarmProvider({ children }: { children: ReactNode }) {
         humidity: cropData.humidity ?? 66.1,
         rainfall: cropData.rainfall ?? 1251,
         recommendationScore:
-          cropData.recommendationScore ?? (details.matchScore || 0.88),
-        expectedYield: cropData.expectedYield ?? details.benchmarkYield ?? 4.0,
-        riskLevel: cropData.riskLevel ?? details.riskLevel ?? 'Low',
-        image: cropData.image || details.image || '/crops/ragi.jpg',
-        targetYield: cropData.targetYield ?? details.benchmarkYield ?? 4.0,
+          cropData.recommendationScore ?? (details.matchScore || catalogItem?.matchScore || 0.88),
+        expectedYield: cropData.expectedYield ?? details.benchmarkYield ?? catalogItem?.benchmarkYield ?? 4.0,
+        riskLevel: cropData.riskLevel ?? details.riskLevel ?? catalogItem?.riskLevel ?? 'Low',
+        image: canonicalImage,
+        targetYield: cropData.targetYield ?? details.benchmarkYield ?? catalogItem?.benchmarkYield ?? 4.0,
         activatedAt: new Date().toISOString(),
       }
 

@@ -22,3 +22,5 @@ dist/
 
 # Temporary files
 temp_check/
+*test_perf*.py
+*get_crops.py

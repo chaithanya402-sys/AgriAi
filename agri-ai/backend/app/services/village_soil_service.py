@@ -21,6 +21,11 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+_PKL_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "datasets",
+    "AP_Village_Soil_Data.pkl",
+)
 _DATASET_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "datasets",
@@ -31,6 +36,17 @@ _DATASET_PATH = os.path.join(
 
 @lru_cache(maxsize=1)
 def _load_df() -> pd.DataFrame:
+    # 1. Ultra-fast binary pickle load (<0.3s)
+    if os.path.isfile(_PKL_PATH):
+        try:
+            t0 = os.times()
+            df = pd.read_pickle(_PKL_PATH)
+            logger.info("Loaded fast binary village soil dataset: %d rows", len(df))
+            return df
+        except Exception as e:
+            logger.warning("Failed loading pkl file (%s), falling back to Excel: %s", _PKL_PATH, e)
+
+    # 2. Fallback to reading Excel
     if not os.path.isfile(_DATASET_PATH):
         logger.error("Village soil dataset not found: %s", _DATASET_PATH)
         return pd.DataFrame()
@@ -44,12 +60,20 @@ def _load_df() -> pd.DataFrame:
     df["_district_l"] = df["District"].str.lower()
     df["_mandal_l"]   = df["Mandal"].str.lower()
     df["_village_l"]  = df["Village"].str.lower()
+
+    # Save to pkl for future instant loads
+    try:
+        df.to_pickle(_PKL_PATH)
+        logger.info("Cached village soil dataset to pkl for instant future loading: %s", _PKL_PATH)
+    except Exception as e:
+        logger.warning("Could not cache to pkl: %s", e)
+
     logger.info("Loaded village soil dataset: %d rows", len(df))
     return df
 
 
 def is_available() -> bool:
-    return os.path.isfile(_DATASET_PATH)
+    return os.path.isfile(_PKL_PATH) or os.path.isfile(_DATASET_PATH)
 
 
 def get_districts() -> List[str]:
@@ -132,6 +156,18 @@ def _find_nearest_known_village(lat: float, lon: float, max_dist_deg: float = 0.
     
     if best_village:
         data = KNOWN_VILLAGE_COORDS[best_village]
+        res = lookup_by_village(data["district"], data["mandal"], best_village)
+        if not res:
+            res = lookup_by_village(data["district"], data["mandal"], None)
+        if not res:
+            res = lookup_by_village(data["district"], None, None)
+        if res:
+            res["lat"] = data["lat"]
+            res["lon"] = data["lon"]
+            res["state"] = data["state"]
+            res["dataSource"] = "Known village coordinates (high-precision)"
+            res["matchLevel"] = 0
+            return res
         return {
             "district": data["district"],
             "mandal": data["mandal"],
@@ -153,7 +189,8 @@ def lookup_by_coords(
 ) -> Optional[Dict[str, Any]]:
     """Return nearest record within max_dist_deg degrees (≈15 km). Filter by district if specified."""
     # Check Centurion University (CUTM AP Vizianagaram campus in Tekkali village, Nelimarla mandal)
-    if is_centurion_university_coords(lat, lon):
+    # Only if district is unspecified or matches Vizianagaram
+    if (not district or "vizianagaram" in district.lower()) and is_centurion_university_coords(lat, lon):
         r = lookup_by_village("Vizianagaram", "Nellimarla", "Tekkali")
         if r:
             r["dataSource"] = "Centurion University (Tekkali, Nelimarla)"

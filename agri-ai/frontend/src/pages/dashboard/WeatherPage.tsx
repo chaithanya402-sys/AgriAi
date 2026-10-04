@@ -93,20 +93,49 @@ const STATUS_ICONS = {
   rainfall: <Umbrella className="h-5 w-5" />,
 }
 
+// District centroids for offline or missing GPS fallback
+const DISTRICT_CENTROIDS: Record<string, { lat: number; lon: number }> = {
+  nellore: { lat: 14.4426, lon: 79.9865 },
+  kadapa: { lat: 14.4673, lon: 78.8242 },
+  visakhapatnam: { lat: 17.6868, lon: 83.2185 },
+  krishna: { lat: 16.5062, lon: 80.6480 },
+  guntur: { lat: 16.3067, lon: 80.4365 },
+  kurnool: { lat: 15.8281, lon: 78.0373 },
+  anantapur: { lat: 14.6819, lon: 77.6006 },
+  chittoor: { lat: 13.2172, lon: 79.1003 },
+  vizianagaram: { lat: 18.1067, lon: 83.3956 },
+  srikakulam: { lat: 18.2969, lon: 83.8968 },
+  prakasam: { lat: 15.5057, lon: 80.0499 },
+}
+
 export function WeatherPage() {
-  const { currentFarm, activeLocation } = useFarm()
+  const { farms, selectedFarmId, setSelectedFarmId, currentFarm, activeLocation } = useFarm()
 
   const coords = useMemo(() => {
     const lat = (activeLocation.farmId === currentFarm?.id ? activeLocation.latitude : null) ?? currentFarm?.latitude
     const lon = (activeLocation.farmId === currentFarm?.id ? activeLocation.longitude : null) ?? currentFarm?.longitude
-    if (typeof lat !== 'number' || typeof lon !== 'number') return null
-    return { lat, lon }
+    if (typeof lat === 'number' && typeof lon === 'number' && !(lat === 0 && lon === 0)) {
+      return { lat, lon }
+    }
+    // District centroid fallback
+    const dist = (activeLocation.farmId === currentFarm?.id ? activeLocation.district : null) || currentFarm?.district
+    if (dist) {
+      const clean = dist.toLowerCase().trim()
+      for (const [k, v] of Object.entries(DISTRICT_CENTROIDS)) {
+        if (clean.includes(k) || k.includes(clean)) return v
+      }
+    }
+    return null
   }, [currentFarm, activeLocation])
 
   const current = useAsync<CurrentWeather>()
   const forecast = useAsync<ForecastResponse>()
 
   useEffect(() => {
+    if (!currentFarm?.id) return
+    console.log("FARM CHANGED:", currentFarm.id)
+    console.log("FARM LOCATION:", currentFarm.location || activeLocation.district || '')
+
     if (!coords) return
     current.run(() => weatherApi.current(coords.lat, coords.lon))
     forecast.run(() => weatherApi.forecast(coords.lat, coords.lon))
@@ -173,6 +202,17 @@ export function WeatherPage() {
         description="Current conditions and 7-day forecast for your farm."
         right={
           <div className="flex items-center gap-3">
+            <select
+              value={selectedFarmId?.toString() || currentFarm?.id?.toString() || ''}
+              onChange={(e) => setSelectedFarmId(Number(e.target.value))}
+              className="h-8 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2.5 text-xs font-bold text-neutral-800 dark:text-neutral-200 cursor-pointer shadow-2xs"
+            >
+              {farms.map((f) => (
+                <option key={f.id} value={f.id.toString()}>
+                  {f.name} {f.district ? `(${f.district})` : ''}
+                </option>
+              ))}
+            </select>
             {demo ? <DemoBadge /> : <LiveBadge />}
             <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
               {loading ? <ButtonLoader label="Refreshing…" /> : <RefreshCw className="h-4 w-4" />}

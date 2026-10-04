@@ -4,7 +4,10 @@
   "private": true,
   "description": "AgriAI root workspace scripts",
   "scripts": {
+    "start": "powershell -ExecutionPolicy Bypass -File ./start_all.ps1",
+    "stop": "powershell -ExecutionPolicy Bypass -File ./stop_all.ps1",
     "dev": "npm --prefix agri-ai/frontend run dev",
+    "frontend": "npm --prefix agri-ai/frontend run dev",
     "build": "npm --prefix agri-ai/frontend run build",
     "mobile": "npm --prefix mobile start"
   }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useFarm } from '@/components/farm/FarmContext'
-import { yieldApi } from '@/services/modules'
+import { yieldApi, soilApi } from '@/services/modules'
 import { useAsync } from '@/hooks/useAsync'
 import { useAgriculturalLocation } from '@/hooks/useAgriculturalLocation'
 import { agriculturalDataService } from '@/services/agriculturalDataService'
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
+import { Alert } from '@/components/ui/Alert'
 import { EmptyState } from '@/components/ui/EmptyState'
 import {
   Select,
@@ -23,6 +24,13 @@ import { CROPS as CROPS_LIST } from '@/lib/crops'
 import type { YieldPredictionResult } from '@/types'
 import { FarmPlanModal } from '@/components/crop/FarmPlanModal'
 import { getCropDetails } from '@/data/cropDetailsData'
+import {
+  getAllCatalogCrops,
+  normalizeCropName,
+  isModelSupportedCrop,
+  cropCatalog,
+  cropImages,
+} from '@/data/cropCatalog'
 import { getCropFertilizerPlan } from '@/data/fertilizerData'
 import { YieldOptimizationPage } from './YieldOptimizationPage'
 import {
@@ -43,6 +51,7 @@ import {
   BarChart3,
   Target,
   Wheat,
+  AlertTriangle,
 } from 'lucide-react'
 
 const CROPS = [...CROPS_LIST]
@@ -69,7 +78,7 @@ export function YieldPage() {
     loading: farmsLoading,
     activeCrop,
   } = useFarm()
-  const { data: result, loading, error, run } = useAsync<YieldPredictionResult>()
+  const { data: asyncResult, loading, error, run } = useAsync<YieldPredictionResult>()
 
   // Subview toggle: 'prediction' vs 'optimize'
   const isOptimizeView = searchParams.get('view') === 'optimize'
@@ -109,68 +118,89 @@ export function YieldPage() {
     rainfall: activeCrop ? String(activeCrop.rainfall) : '1251',
   })
 
-  // Synchronize form whenever activeCrop updates or changes
-  useEffect(() => {
-    if (activeCrop) {
-      setForm({
-        farm_id: String(activeCrop.farmId),
-        crop: activeCrop.cropName,
-        area: String(activeCrop.area),
-        nitrogen: String(activeCrop.nitrogen),
-        phosphorus: String(activeCrop.phosphorus),
-        potassium: String(activeCrop.potassium),
-        temperature: String(activeCrop.temperature),
-        humidity: String(activeCrop.humidity),
-        ph: String(activeCrop.soilPH),
-        rainfall: String(activeCrop.rainfall),
-      })
-    }
-  }, [activeCrop])
+  // Action-driven states: Form input vs Executed result separation
+  const [hasExecuted, setHasExecuted] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+  const [executedResult, setExecutedResult] = useState<YieldPredictionResult | null>(null)
+  const [submittedFingerprint, setSubmittedFingerprint] = useState<string | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
   // Active farm location
   const loc = useAgriculturalLocation(activeFarm?.id)
 
-  // Auto-run yield prediction when active crop changes or mounts
+  const getYieldFingerprint = (f: typeof form, farmId: string | number | undefined) => {
+    return `${f.crop}_${farmId}_${f.area}_${f.nitrogen}_${f.phosphorus}_${f.potassium}_${f.temperature}_${f.humidity}_${f.ph}_${f.rainfall}`
+  }
+
+  // Synchronize form parameters whenever active farm or location changes, WITHOUT running prediction
   useEffect(() => {
-    if (!activeCrop) return
+    if (!activeFarm?.id) return
 
-    const targetCrop = activeCrop.rawCropName
-    const targetArea = Number(activeCrop.area) || 3
+    const farmId = activeFarm.id
+    console.log("FARM CHANGED:", farmId)
+    console.log("FARM LOCATION:", loc.district || activeFarm.district || activeFarm.location || '')
 
-    run(async () => {
-      if (loc.state && loc.district) {
-        try {
-          const res = await agriculturalDataService.getYieldData(
-            loc.state,
-            loc.district,
-            targetCrop,
-            targetArea
-          )
-          return {
-            predicted_yield: res.predicted_yield,
-            unit: res.unit,
-            confidence: res.confidence,
-            area: res.area,
-            crop: activeCrop.cropName,
-            feature_importance: res.feature_importance,
-            demo_mode: false,
-          }
-        } catch (e) {
-          console.warn('Yield service fallback:', e)
-        }
-      }
+    let isMounted = true
+    // Clear old prediction immediately on farm change
+    setExecutedResult(null)
+    setHasExecuted(false)
+    setIsDirty(false)
+    setSubmittedFingerprint(null)
+    setValidationError(null)
 
-      return {
-        predicted_yield: activeCrop.expectedYield || cropDetails.benchmarkYield || 4.0,
-        unit: 'tonnes/ha',
-        confidence: 0.86,
-        area: targetArea,
-        crop: activeCrop.cropName,
-        feature_importance: DEFAULT_FEATURE_IMPORTANCE,
-        demo_mode: false,
-      }
+    // Fetch farm-specific soil readings and climate data
+    Promise.all([
+      soilApi.getFarmSoil(farmId).catch(() => null),
+      loc.state && loc.district ? agriculturalDataService.getCropData(loc.state, loc.district).catch(() => null) : Promise.resolve(null),
+    ]).then(([farmSoil, climateData]) => {
+      if (!isMounted) return
+
+      const farmArea = activeCrop?.area ? String(activeCrop.area) : (activeFarm.total_area ? String(activeFarm.total_area) : '3')
+      const targetCrop = activeCrop?.rawCropName || currentRawCrop || 'Ragi'
+      const targetCropDisplay = activeCrop?.cropName || currentCropName || 'Ragi / Finger Millet'
+
+      const nVal = (farmSoil?.found && farmSoil.nitrogen != null)
+        ? farmSoil.nitrogen
+        : (climateData?.found && climateData.nitrogen != null ? climateData.nitrogen : (activeCrop?.nitrogen ?? 60))
+      const pVal = (farmSoil?.found && farmSoil.phosphorus != null)
+        ? farmSoil.phosphorus
+        : (climateData?.found && climateData.phosphorus != null ? climateData.phosphorus : (activeCrop?.phosphorus ?? 40))
+      const kVal = (farmSoil?.found && farmSoil.potassium != null)
+        ? farmSoil.potassium
+        : (climateData?.found && climateData.potassium != null ? climateData.potassium : (activeCrop?.potassium ?? 40))
+      const phVal = (farmSoil?.found && farmSoil.ph != null)
+        ? farmSoil.ph
+        : (climateData?.found && climateData.ph != null ? climateData.ph : (activeCrop?.soilPH ?? 6.5))
+      const tempVal = (climateData?.found && climateData.temperature != null)
+        ? climateData.temperature
+        : (activeCrop?.temperature ?? 27.8)
+      const humVal = (climateData?.found && climateData.humidity != null)
+        ? climateData.humidity
+        : (activeCrop?.humidity ?? 64.9)
+      const rainVal = (climateData?.found && climateData.rainfall != null)
+        ? climateData.rainfall
+        : (activeCrop?.rainfall ?? 1251)
+
+      setForm({
+        farm_id: String(farmId),
+        crop: targetCropDisplay,
+        area: farmArea,
+        nitrogen: String(nVal),
+        phosphorus: String(pVal),
+        potassium: String(kVal),
+        temperature: String(tempVal),
+        humidity: String(humVal),
+        ph: String(phVal),
+        rainfall: String(rainVal),
+      })
+
+      // NOTE: Prediction model execution REMOVED here. It runs ONLY when "Predict Yield" is clicked!
     })
-  }, [activeCrop?.cropName, activeCrop?.area, loc.state, loc.district])
+
+    return () => {
+      isMounted = false
+    }
+  }, [activeFarm?.id, loc.state, loc.district, activeCrop?.cropName, activeCrop?.area])
 
   // Fertilizer plan computation for nutrient insight card
   const fertilizerPlan = useMemo(() => {
@@ -193,46 +223,119 @@ export function YieldPage() {
   }, [fertilizerPlan])
 
   const handleChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => {
+      const next = { ...prev, [field]: value }
+      if (hasExecuted || submittedFingerprint) {
+        if (getYieldFingerprint(next, activeFarm?.id) !== submittedFingerprint) {
+          setIsDirty(true)
+          setHasExecuted(false)
+          setExecutedResult(null)
+        }
+      }
+      return next
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await run(async () => {
+    setValidationError(null)
+
+    const areaVal = Number(form.area) || Number(currentFarmArea) || 3
+    const n = Number(form.nitrogen)
+    const p = Number(form.phosphorus)
+    const k = Number(form.potassium)
+    const temp = Number(form.temperature)
+    const hum = Number(form.humidity)
+    const phVal = Number(form.ph)
+    const rain = Number(form.rainfall)
+
+    if (!form.crop || !form.crop.trim()) {
+      setValidationError('Please select or enter a crop name.')
+      return
+    }
+    if (areaVal <= 0) {
+      setValidationError('Please enter a valid positive farm area in hectares.')
+      return
+    }
+    if ([n, p, k, temp, hum, rain].some((v) => isNaN(v) || v < 0)) {
+      setValidationError('Please enter valid non-negative numbers for soil and climate parameters.')
+      return
+    }
+    if (isNaN(phVal) || phVal < 0 || phVal > 14) {
+      setValidationError('Soil pH must be between 0 and 14.')
+      return
+    }
+
+    const currentFingerprint = getYieldFingerprint(form, activeFarm?.id)
+
+    const canonicalId = normalizeCropName(form.crop)
+    const isSupported = isModelSupportedCrop(canonicalId)
+
+    if (!isSupported) {
+      setExecutedResult({
+        predicted_yield: 0,
+        unit: 'tonnes/ha',
+        confidence: 0,
+        area: areaVal,
+        crop: form.crop,
+        feature_importance: [],
+        demo_mode: false,
+        is_model_supported: false,
+        unsupported_message: 'Yield prediction model is not currently trained for this crop.',
+      })
+      setHasExecuted(true)
+      setIsDirty(false)
+      setSubmittedFingerprint(currentFingerprint)
+      return
+    }
+
+    const res = await run(async () => {
       const cropQuery = form.crop.includes('/') ? form.crop.split('/')[0].trim() : form.crop
       if (loc.state && loc.district) {
-        const res = await agriculturalDataService.getYieldData(
+        const r = await agriculturalDataService.getYieldData(
           loc.state,
           loc.district,
           cropQuery,
-          Number(form.area) || Number(currentFarmArea) || 3
+          areaVal
         )
         return {
-          predicted_yield: res.predicted_yield,
-          unit: res.unit,
-          confidence: res.confidence,
-          area: res.area,
+          predicted_yield: r.predicted_yield,
+          unit: r.unit,
+          confidence: r.confidence,
+          area: r.area,
           crop: form.crop,
-          feature_importance: res.feature_importance,
+          feature_importance: r.feature_importance,
           demo_mode: false,
+          is_model_supported: true,
         }
       }
 
-      return yieldApi.predict({
+      const apiRes = await yieldApi.predict({
         farm_id: Number(form.farm_id) || currentFarm?.id,
         crop: form.crop,
-        area: Number(form.area) || Number(currentFarmArea) || 3,
-        nitrogen: Number(form.nitrogen),
-        phosphorus: Number(form.phosphorus),
-        potassium: Number(form.potassium),
-        temperature: Number(form.temperature),
-        humidity: Number(form.humidity),
-        ph: Number(form.ph),
-        rainfall: Number(form.rainfall),
+        area: areaVal,
+        nitrogen: n,
+        phosphorus: p,
+        potassium: k,
+        temperature: temp,
+        humidity: hum,
+        ph: phVal,
+        rainfall: rain,
         state: loc.state || undefined,
         district: loc.district || undefined,
       })
+      return {
+        ...apiRes,
+        is_model_supported: true,
+      }
     })
+
+    if (res) {
+      setExecutedResult(res)
+      setHasExecuted(true)
+      setIsDirty(false)
+      setSubmittedFingerprint(currentFingerprint)
+    }
   }
 
   // If in 'optimize' view, render the detail page directly
@@ -307,24 +410,31 @@ export function YieldPage() {
     )
   }
 
-  const predictedYieldValue = result?.predicted_yield
-    ? formatNumber(result.predicted_yield)
-    : activeCrop.expectedYield
-    ? formatNumber(activeCrop.expectedYield)
-    : '4.0'
-  const predictedTotal = (
-    Number(predictedYieldValue) * (Number(form.area) || Number(currentFarmArea) || 3)
-  ).toFixed(1)
-  const confidenceValue = result?.confidence ? Math.round(result.confidence * 100) : 86
-  const featureList = result?.feature_importance?.length
-    ? result.feature_importance
+  const predictedYieldValue = executedResult?.predicted_yield
+    ? formatNumber(executedResult.predicted_yield)
+    : ''
+  const predictedTotal = executedResult?.predicted_yield
+    ? (Number(executedResult.predicted_yield) * (Number(form.area) || Number(currentFarmArea) || 3)).toFixed(1)
+    : '0'
+  const confidenceValue = executedResult?.confidence ? Math.round(executedResult.confidence * 100) : 86
+  const featureList = executedResult?.feature_importance?.length
+    ? executedResult.feature_importance
     : DEFAULT_FEATURE_IMPORTANCE
 
-  // Crop image with fallbacks
+  // Selected crop ID & details
+  const activeSelectedCrop = form.crop || currentCropName
+  const selectedCropId = normalizeCropName(activeSelectedCrop)
+  const selectedCatalogCrop = cropCatalog[selectedCropId]
+  const displayCropName = selectedCatalogCrop?.displayName || activeSelectedCrop
+  const isSelectedCropSupported = isModelSupportedCrop(selectedCropId)
+
+  // Crop image with central mapping
   const cropImageSrc =
-    activeCrop.image ||
+    (activeSelectedCrop === currentCropName && activeCrop.image) ||
+    selectedCatalogCrop?.image ||
+    cropImages[selectedCropId] ||
     cropDetails.image ||
-    `/crops/${currentRawCrop.toLowerCase()}.jpg`
+    '/crops/ragi.jpg'
 
   return (
     <div className="space-y-6 pb-16">
@@ -377,7 +487,7 @@ export function YieldPage() {
               <div className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-2xl border border-neutral-200 shadow-2xs bg-emerald-50">
                 <img
                   src={cropImageSrc}
-                  alt={currentCropName}
+                  alt={displayCropName}
                   className="h-full w-full object-cover"
                   onError={(e) => {
                     ;(e.target as HTMLImageElement).src =
@@ -389,11 +499,16 @@ export function YieldPage() {
               <div className="space-y-2 flex-1 min-w-0">
                 <div className="flex items-center gap-2.5">
                   <h2 className="text-xl sm:text-2xl font-extrabold text-[#17231A] tracking-tight truncate">
-                    {currentCropName}
+                    {displayCropName}
                   </h2>
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/90 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 shrink-0">
-                    Selected Crop
+                    {activeSelectedCrop === currentCropName ? 'Active Farm Crop' : 'Selected for Analysis'}
                   </span>
+                  {!isSelectedCropSupported && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 shrink-0">
+                      Catalog Crop
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-neutral-600 font-medium">
@@ -456,6 +571,30 @@ export function YieldPage() {
         </Card>
       </div>
 
+      {/* Stale Parameters Alert */}
+      {isDirty && (
+        <Alert variant="warning" className="border-amber-300 bg-amber-50 text-amber-900">
+          <AlertTriangle className="h-4 w-4 text-amber-700" />
+          <span>Prediction parameters changed. Click Predict Yield to generate a new prediction.</span>
+        </Alert>
+      )}
+
+      {/* Validation Error */}
+      {validationError && (
+        <Alert variant="danger">
+          <AlertTriangle className="h-4 w-4" />
+          <span>{validationError}</span>
+        </Alert>
+      )}
+
+      {/* Error */}
+      {error && (
+        <Alert variant="danger">
+          <AlertTriangle className="h-4 w-4" />
+          <span>{error || 'Unable to generate yield prediction. Please check the parameters and try again.'}</span>
+        </Alert>
+      )}
+
       {/* ============================================================== */}
       {/* 3. MIDDLE ROW: 3 BALANCED CARDS (Form: 5, Yield: 3, Influence: 4) */}
       {/* ============================================================== */}
@@ -486,19 +625,29 @@ export function YieldPage() {
                   <Label className="text-[11px] font-semibold text-neutral-600">Crop</Label>
                   <Select
                     value={form.crop}
-                    onValueChange={(v) => handleChange('crop', v)}
+                    onValueChange={(v) => {
+                      setExecutedResult(null)
+                      setHasExecuted(false)
+                      setIsDirty(false)
+                      setSubmittedFingerprint(null)
+                      setValidationError(null)
+                      handleChange('crop', v)
+                    }}
                   >
                     <SelectTrigger className="h-8.5 text-xs font-bold bg-neutral-50/60 border-neutral-200">
                       <SelectValue placeholder="Crop" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-72">
                       {/* Active crop at top */}
-                      <SelectItem value={currentCropName}>{currentCropName}</SelectItem>
-                      {CROPS.filter((c) => c !== currentCropName).slice(0, 8).map((crop) => (
-                        <SelectItem key={crop} value={crop}>
-                          {crop}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value={currentCropName}>{currentCropName} (Active)</SelectItem>
+                      {getAllCatalogCrops()
+                        .filter((c) => c.displayName !== currentCropName && c.name !== currentCropName)
+                        .sort((a, b) => a.displayName.localeCompare(b.displayName))
+                        .map((crop) => (
+                          <SelectItem key={crop.id} value={crop.displayName}>
+                            {crop.displayName}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -509,6 +658,11 @@ export function YieldPage() {
                     value={selectedFarmId?.toString() || activeFarm?.id?.toString() || '1'}
                     onValueChange={(v) => {
                       setSelectedFarmId(Number(v))
+                      setExecutedResult(null)
+                      setHasExecuted(false)
+                      setIsDirty(false)
+                      setSubmittedFingerprint(null)
+                      setValidationError(null)
                       handleChange('farm_id', v)
                     }}
                   >
@@ -633,7 +787,7 @@ export function YieldPage() {
                     className="h-8.5 w-full rounded-xl bg-[#123B22] text-xs font-bold text-white hover:bg-[#0E2F1B] px-4 shadow-2xs flex items-center justify-center gap-1.5"
                   >
                     <Sprout className="h-3.5 w-3.5" />
-                    <span>{loading ? <ButtonLoader label="Predicting..." /> : 'Predict Yield'}</span>
+                    <span>{loading ? <ButtonLoader label="Predicting yield..." /> : 'Predict Yield'}</span>
                   </Button>
                 </div>
               </div>
@@ -641,8 +795,11 @@ export function YieldPage() {
           </CardContent>
         </Card>
 
-        {/* Card 2: Predicted Yield (3 Columns out of 12) */}
-        <Card className="relative overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-xs lg:col-span-3 flex flex-col justify-between">
+        {/* Results or Initial Empty State */}
+        {hasExecuted && executedResult && !isDirty ? (
+          <>
+            {/* Card 2: Predicted Yield (3 Columns out of 12) */}
+            <Card className="relative overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-xs lg:col-span-3 flex flex-col justify-between">
           <CardHeader className="pb-2 pt-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -657,72 +814,73 @@ export function YieldPage() {
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-4 pt-1 z-10">
-            <div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-4xl font-black text-[#17231A] tracking-tight">
-                  {predictedYieldValue}
-                </span>
-                <span className="text-sm font-bold text-neutral-500">tonnes/ha</span>
-              </div>
-              <p className="text-xs text-neutral-500 mt-1 font-medium">
-                Expected production for {form.area || currentFarmArea} hectares
-              </p>
-              <p className="text-sm font-extrabold text-emerald-800 mt-0.5">
-                ≈ {predictedTotal} tonnes total
-              </p>
-            </div>
-
-            {/* Circular Confidence Badge */}
-            <div className="flex items-center gap-3 rounded-2xl bg-white/95 backdrop-blur-xs border border-neutral-200/80 p-3 shadow-2xs">
-              <div className="relative flex items-center justify-center w-12 h-12 shrink-0">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    fill="transparent"
-                    stroke="#E2E8F0"
-                    strokeWidth="10"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    fill="transparent"
-                    stroke="#0F766E"
-                    strokeWidth="10"
-                    strokeDasharray="251.2"
-                    strokeDashoffset={251.2 * (1 - confidenceValue / 100)}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <span className="absolute text-[11px] font-black text-[#17231A]">
-                  {confidenceValue}%
-                </span>
-              </div>
-
-              <div>
-                <span className="text-xs font-extrabold text-[#17231A]">Confidence</span>
-                <p className="text-[10px] text-neutral-500 font-medium leading-tight">
-                  High confidence prediction
+          <CardContent className="space-y-4 pt-1 pb-5 z-10">
+            {executedResult?.is_model_supported === false ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-center my-auto">
+                <AlertTriangle className="h-6 w-6 text-amber-600 mx-auto mb-2" />
+                <p className="text-xs font-bold text-amber-900 leading-snug">
+                  Yield prediction model is not currently trained for this crop.
+                </p>
+                <p className="text-[11px] text-amber-700 mt-1 font-medium">
+                  Agronomic requirements, soil suitability, and farming guidelines are available below.
                 </p>
               </div>
-            </div>
-          </CardContent>
+            ) : (
+              <div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-4xl font-black text-[#17231A] tracking-tight">
+                    {predictedYieldValue}
+                  </span>
+                  <span className="text-sm font-bold text-neutral-500">tonnes/ha</span>
+                </div>
+                <p className="text-xs text-neutral-500 mt-1 font-medium">
+                  Expected production for {form.area || currentFarmArea} hectares
+                </p>
+                <p className="text-sm font-extrabold text-emerald-800 mt-0.5">
+                  ≈ {predictedTotal} tonnes total
+                </p>
+              </div>
+            )}
 
-          {/* Panoramic crop landscape illustration at bottom */}
-          <div className="relative h-20 w-full overflow-hidden mt-1 pointer-events-none">
-            <img
-              src="/agri-bg/bg-01.webp"
-              alt=""
-              className="h-full w-full object-cover object-bottom"
-              onError={(e) => {
-                ;(e.target as HTMLImageElement).src = '/hero-farmer.jpg'
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/10 to-white" />
-          </div>
+            {/* Circular Confidence Badge */}
+            {executedResult?.is_model_supported !== false && (
+              <div className="flex items-center gap-3 rounded-2xl bg-white/95 backdrop-blur-xs border border-neutral-200/80 p-3 shadow-2xs">
+                <div className="relative flex items-center justify-center w-12 h-12 shrink-0">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="40"
+                      fill="transparent"
+                      stroke="#E2E8F0"
+                      strokeWidth="10"
+                    />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="40"
+                      fill="transparent"
+                      stroke="#0F766E"
+                      strokeWidth="10"
+                      strokeDasharray="251.2"
+                      strokeDashoffset={251.2 * (1 - confidenceValue / 100)}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <span className="absolute text-[11px] font-black text-[#17231A]">
+                    {confidenceValue}%
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-xs font-extrabold text-[#17231A]">Confidence</span>
+                  <p className="text-[10px] text-neutral-500 font-medium leading-tight">
+                    High confidence prediction
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
         </Card>
 
         {/* Card 3: What Influenced Your Prediction? (4 Columns out of 12) */}
@@ -767,8 +925,26 @@ export function YieldPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </>
+    ) : (
+      /* Initial Empty State Card (7 Columns out of 12) */
+      <Card className="rounded-2xl border border-neutral-200/90 bg-white p-8 sm:p-12 text-center shadow-xs lg:col-span-7 flex flex-col items-center justify-center min-h-[340px]">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-[#2E7D32] border border-emerald-200/80">
+          <Wheat className="h-7 w-7" />
+        </div>
+        <h3 className="mt-4 text-lg font-bold text-neutral-900">
+          Ready for yield prediction
+        </h3>
+        <p className="mx-auto mt-1.5 max-w-md text-xs sm:text-sm text-neutral-500 leading-relaxed">
+          Review the crop, farm and environmental parameters, then click Predict Yield.
+        </p>
+      </Card>
+    )}
+  </div>
 
+  {/* Results details: AI Yield Optimization and Fertilizer Insight */}
+  {hasExecuted && executedResult && !isDirty && (
+    <>
       {/* ============================================================== */}
       {/* 4. AI YIELD OPTIMIZATION SECTION (4 Cards in a row)            */}
       {/* ============================================================== */}
@@ -1036,6 +1212,8 @@ export function YieldPage() {
           </CardContent>
         </Card>
       </div>
+    </>
+  )}
 
       {/* Full Farm Plan Modal */}
       {isFarmPlanModalOpen && (

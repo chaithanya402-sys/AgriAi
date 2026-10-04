@@ -92,6 +92,7 @@ export function YouTubePlayer({
         // If player already exists, load the new video ID cleanly
         if (playerRef.current && typeof playerRef.current.cueVideoById === 'function') {
           try {
+            setHasError(false)
             playerRef.current.cueVideoById(cleanVideoId)
             setIsLoading(false)
             return
@@ -114,6 +115,7 @@ export function YouTubePlayer({
             controls: 1,
             rel: 0,
             modestbranding: 1,
+            enablejsapi: 1,
             origin: window.location.origin,
             playsinline: 1,
           },

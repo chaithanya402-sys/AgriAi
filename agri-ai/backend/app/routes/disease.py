@@ -60,7 +60,11 @@ async def predict_disease(
         probabilities=result["probabilities"],
         is_healthy=result["is_healthy"],
         low_confidence=low_confidence,
-        message=message,
+        message=message or "",
         demo_mode=result["demo_mode"],
         image_processed=result["image_processed"],
+        crop_detected=result.get("crop_detected"),
+        description=result.get("description"),
+        treatment=result.get("treatment"),
+        ai_model=result.get("ai_model"),
     )

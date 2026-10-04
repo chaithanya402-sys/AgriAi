@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { getCropDetails } from '@/data/cropDetailsData'
 import { useFarm } from '@/components/farm/FarmContext'
 import { useAuth } from '@/services/auth'
 import {
@@ -42,21 +43,51 @@ export function CropActionPlanPage() {
   const { user } = useAuth()
   const { farms, selectedFarmId, setSelectedFarmId, currentFarm, activeCrop } = useFarm()
 
-  // 1. Resolve Active Farm & Active Crop
   const activeFarm = farms.find((f) => f.id === selectedFarmId) || currentFarm || farms[0] || null
-  const rawCropName = activeCrop?.rawCropName || 'Soybean'
-  const cropDisplayName = activeCrop?.cropName || (rawCropName === 'Soybean' ? 'Soybean' : 'Ragi / Finger Millet')
-  const cropImage = activeCrop?.image || (rawCropName === 'Soybean' ? '/crops/soybean-hero.jpg' : '/crops/ragi.jpg')
-  const cropStage = activeCrop?.cropStage || 'Vegetative'
+  const rawCropName = activeCrop?.rawCropName || activeCrop?.cropName?.split('/')[0]?.trim() || 'Rice'
+  const cropDetails = useMemo(() => getCropDetails(rawCropName), [rawCropName])
+  const cropDisplayName = activeCrop?.cropName || cropDetails.displayName || rawCropName
+  const cropVariety = activeCrop?.variety || (
+    rawCropName.toLowerCase().includes('rice') || rawCropName.toLowerCase().includes('paddy')
+      ? 'BPT 5204 (Samba Mahsuri)'
+      : rawCropName.toLowerCase().includes('soybean')
+      ? 'JS 335'
+      : rawCropName.toLowerCase().includes('maize') || rawCropName.toLowerCase().includes('corn')
+      ? 'DHM 117'
+      : rawCropName.toLowerCase().includes('cotton')
+      ? 'Bt Cotton (RCH 659)'
+      : rawCropName.toLowerCase().includes('ragi')
+      ? 'GPU 28'
+      : rawCropName.toLowerCase().includes('wheat')
+      ? 'HD 2967'
+      : 'High-Yield Certified'
+  )
+  const cropImage = activeCrop?.image || cropDetails.image || '/crops/ragi.jpg'
+  const cropStage = activeCrop?.cropStage || 'Vegetative (Day 31–45)'
 
-  const farmName = activeCrop?.farmName || activeFarm?.name || 'Green Valley Farm'
-  const farmerName = user?.name || 'PALLA CHAITANYA'
-  const farmArea = activeCrop?.area ? `${activeCrop.area} ha` : (activeFarm?.total_area ? `${activeFarm.total_area} ha` : '3 ha')
-  const farmDistrict = activeFarm?.district || 'Nellore'
-  const farmState = activeFarm?.state || 'Andhra Pradesh'
-  const farmMandal = activeFarm?.mandal || 'Kavali'
-  const farmVillage = activeFarm?.village || 'Kavali'
-  const farmLocation = activeCrop?.location || `${farmDistrict}, ${farmState}`
+  const farmName = activeFarm?.name || activeCrop?.farmName || 'Active Farm'
+  const farmerName = user?.name || user?.fullName || 'Farmer'
+  const farmArea = activeFarm?.total_area
+    ? `${activeFarm.total_area} ha`
+    : activeCrop?.area
+    ? `${activeCrop.area} ha`
+    : '4 ha'
+  const farmDistrict = activeFarm?.district || activeCrop?.district || ''
+  const farmState = activeFarm?.state || activeCrop?.state || 'Andhra Pradesh'
+  const farmMandal = activeFarm?.mandal || ''
+  const farmVillage = activeFarm?.village || ''
+  const farmLocation =
+    [farmVillage, farmMandal, farmDistrict, farmState].filter(Boolean).join(', ') ||
+    activeFarm?.location ||
+    `${farmDistrict || 'Farm'}, ${farmState}`
+
+  const location = useLocation()
+  const [justActivatedBanner, setJustActivatedBanner] = useState<string | null>(() => {
+    if (location.state && (location.state as any).justActivated) {
+      return `${(location.state as any).cropName || cropDisplayName} is now your active crop.`
+    }
+    return null
+  })
 
   // 2. Action Plan API state
   const [steps, setSteps] = useState<ActionPlanStepItem[]>([])
@@ -100,6 +131,9 @@ export function CropActionPlanPage() {
   }
 
   useEffect(() => {
+    // Invalidate steps and reset to step 1 when active crop or farm changes to prevent stale data
+    setSteps([])
+    setActiveStepNumber(1)
     loadActionPlan()
   }, [activeFarm?.id, rawCropName])
 
@@ -236,10 +270,21 @@ export function CropActionPlanPage() {
 
         {/* Farm & Crop Context Selectors matching screenshot top right */}
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          {/* Farm Pill */}
-          <div className="flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-bold text-neutral-800 shadow-2xs">
-            <Home className="h-3.5 w-3.5 text-emerald-800" />
-            <span>Farm: {farmName}</span>
+          {/* Farm Selector */}
+          <div className="flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-1 text-xs font-bold text-neutral-800 shadow-2xs">
+            <Home className="h-3.5 w-3.5 text-emerald-800 shrink-0" />
+            <select
+              value={selectedFarmId?.toString() || activeFarm?.id?.toString() || ''}
+              onChange={(e) => setSelectedFarmId(Number(e.target.value))}
+              className="bg-transparent border-none text-xs font-bold text-neutral-800 focus:outline-hidden cursor-pointer"
+            >
+              {farms.map((f) => (
+                <option key={f.id} value={f.id.toString()}>
+                  {f.name} {f.district ? `(${f.district})` : ''}
+                </option>
+              ))}
+            </select>
+            {isLoading && <span className="text-[10px] text-neutral-400 animate-pulse">Loading...</span>}
           </div>
 
           {/* Crop Pill */}
@@ -249,11 +294,28 @@ export function CropActionPlanPage() {
             className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-900 hover:bg-emerald-100 transition-colors shadow-2xs"
           >
             <Sprout className="h-3.5 w-3.5 text-emerald-700" />
-            <span>Crop: {rawCropName}</span>
+            <span>Crop: {cropDisplayName}</span>
             <ChevronRight className="h-3 w-3 text-emerald-600" />
           </button>
         </div>
       </div>
+
+      {/* Newly activated crop notification banner */}
+      {justActivatedBanner && (
+        <div className="rounded-xl border border-emerald-300 bg-emerald-100 p-3.5 text-xs font-bold text-emerald-950 flex items-center justify-between gap-2 shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
+            <span>{justActivatedBanner} Action plan and tutorials updated for {activeFarm?.name || 'your farm'}.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setJustActivatedBanner(null)}
+            className="text-xs font-bold text-emerald-900 hover:underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Action error notification */}
       {actionError && (
@@ -722,7 +784,7 @@ export function CropActionPlanPage() {
               <div>
                 <h4 className="text-sm font-extrabold text-[#17231A]">{cropDisplayName}</h4>
                 <div className="flex items-center gap-3 text-[11px] text-neutral-500 font-medium mt-0.5">
-                  <span>Variety: <strong>JS 335</strong></span>
+                  <span>Variety: <strong>{cropVariety}</strong></span>
                   <span>Stage: <strong>{cropStage}</strong></span>
                 </div>
               </div>
@@ -733,7 +795,7 @@ export function CropActionPlanPage() {
               onClick={() => navigate('/dashboard/crop')}
               className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 hover:underline pt-1"
             >
-              <span>View Crop Details</span>
+              <span>Change / View Crop Details</span>
               <ArrowRight className="h-3 w-3" />
             </button>
           </div>
