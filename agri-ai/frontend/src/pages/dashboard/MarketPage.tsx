@@ -97,7 +97,7 @@ const getCropEmoji = (name: string) => {
 export function MarketPage() {
   const navigate = useNavigate()
   const { t, tCrop } = useLanguage()
-  const { currentFarm } = useFarm()
+  const { currentFarm, activeCrop, activeLocation } = useFarm()
 
   // Main Data States
   const [summary, setSummary] = useState<MarketSummaryData | null>(null)
@@ -132,6 +132,25 @@ export function MarketPage() {
   // Geolocation
   const [isLocating, setIsLocating] = useState<boolean>(false)
   const [locationMessage, setLocationMessage] = useState<string | null>(null)
+
+  // Synchronize active crop from shared FarmContext across all modules
+  useEffect(() => {
+    if (activeCrop) {
+      const cropName = activeCrop.rawCropName || activeCrop.cropName
+      if (cropName) {
+        setSelectedCrop(cropName)
+        setTrendCrop(cropName)
+      }
+    }
+  }, [activeCrop])
+
+  // Synchronize farm district from shared FarmContext
+  useEffect(() => {
+    const dist = currentFarm?.district || activeLocation?.district
+    if (dist) {
+      setSelectedDistrict(dist)
+    }
+  }, [currentFarm?.id, currentFarm?.district, activeLocation?.district])
 
   // Fetch initial metadata
   useEffect(() => {

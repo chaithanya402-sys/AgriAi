@@ -55,10 +55,11 @@ class RiskAssessmentService:
         if disease is None and crop:
             disease = data_loader.disease_rate(crop)
 
+        # In the AgriAI Risk Factors interface, all five sliders are 0-100 risk levels (0 = none, 100 = extreme risk)
         sub_risks = {
             "weather": _as_risk(weather),
-            "soil": _as_risk(100 - soil_health) if soil_health is not None else 0.0,
-            "water": _as_risk(100 - water) if water is not None else 0.0,
+            "soil": _as_risk(soil_health),
+            "water": _as_risk(water),
             "disease": _as_risk(disease),
             "price": _as_risk(price),
         }
@@ -67,8 +68,15 @@ class RiskAssessmentService:
         overall = round(min(100.0, max(0.0, overall)), 1)
 
         level = _level(overall)
-        top_risks = [LABELS[k] for k in WEIGHTS if sub_risks[k] > 60]
-        recommendations = [RECOMMENDATIONS[k] for k in WEIGHTS if sub_risks[k] > 60]
+        sorted_factors = sorted(WEIGHTS.keys(), key=lambda k: sub_risks[k], reverse=True)
+        top_risks = [LABELS[k] for k in sorted_factors if sub_risks[k] >= 30][:3]
+        recommendations = [RECOMMENDATIONS[k] for k in sorted_factors if sub_risks[k] >= 30]
+        if not recommendations:
+            recommendations = ["Continue standard farm monitoring and follow recommended seasonal crop practices."]
+
+        high_risk_count = sum(1 for v in sub_risks.values() if v >= 60)
+        moderate_risk_count = sum(1 for v in sub_risks.values() if 30 <= v < 60)
+        low_risk_count = sum(1 for v in sub_risks.values() if v < 30)
 
         return {
             "overall_risk": overall,
@@ -76,6 +84,9 @@ class RiskAssessmentService:
             "breakdown": {k: round(v, 1) for k, v in sub_risks.items()},
             "top_risks": top_risks,
             "recommendations": recommendations,
+            "high_risk_count": high_risk_count,
+            "moderate_risk_count": moderate_risk_count,
+            "low_risk_count": low_risk_count,
             "demo_mode": settings.DEMO_MODE,
         }
 
@@ -89,7 +100,7 @@ def _as_risk(value: Optional[float]) -> float:
 def _level(score: float) -> str:
     if score < 30:
         return "Low"
-    if score < 55:
+    if score < 60:
         return "Moderate"
     if score < 80:
         return "High"

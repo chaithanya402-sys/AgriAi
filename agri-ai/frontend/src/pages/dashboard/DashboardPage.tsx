@@ -411,10 +411,11 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      {/* Farm Overview + Weather side-by-side */}
+      {/* Farm Overview + Weather side-by-side: Compact layout with dominant map */}
       {currentFarm && (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-3.5 lg:grid-cols-12 items-stretch max-w-full xl:max-w-[94%]">
           <FarmOverviewCard
+            className="lg:col-span-7 xl:col-span-8 h-full"
             farm={currentFarm}
             activeState={activeLocation.farmId === currentFarm.id ? activeLocation.state : currentFarm.state}
             activeDistrict={activeLocation.farmId === currentFarm.id ? activeLocation.district : currentFarm.district}
@@ -424,6 +425,7 @@ export function DashboardPage() {
             locationLoading={activeLocationLoading}
           />
           <WeatherOverviewCard
+            className="lg:col-span-5 xl:col-span-4 h-full"
             farmId={currentFarm.id}
             lat={(activeLocation.farmId === currentFarm.id ? activeLocation.latitude : null) ?? currentFarm.latitude ?? null}
             lon={(activeLocation.farmId === currentFarm.id ? activeLocation.longitude : null) ?? currentFarm.longitude ?? null}

@@ -58,5 +58,8 @@ def assess_risk(
         breakdown=result["breakdown"],
         top_risks=result["top_risks"],
         recommendations=result["recommendations"],
+        high_risk_count=result.get("high_risk_count", 0),
+        moderate_risk_count=result.get("moderate_risk_count", 0),
+        low_risk_count=result.get("low_risk_count", 0),
         demo_mode=result["demo_mode"],
     )

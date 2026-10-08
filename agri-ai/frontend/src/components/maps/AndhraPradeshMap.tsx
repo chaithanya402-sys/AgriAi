@@ -317,11 +317,11 @@ export function AndhraPradeshMap({
 
   return (
     <div
-      className={`relative flex flex-col bg-white rounded-xl border border-emerald-200 overflow-hidden shadow-sm ${className}`}
+      className={`relative flex flex-col h-full bg-white rounded-xl border border-emerald-200 overflow-hidden shadow-sm ${className}`}
       aria-label="Real Andhra Pradesh Farm Location Map"
     >
       {/* Real Map Header Bar */}
-      <div className="flex items-center justify-between px-3 py-2 bg-emerald-50/80 border-b border-emerald-100">
+      <div className="flex items-center justify-between px-2.5 py-1.5 bg-emerald-50/80 border-b border-emerald-100 shrink-0">
         <div className="flex items-center gap-1.5 min-w-0">
           <MapPin className="h-3.5 w-3.5 text-emerald-700 flex-shrink-0" />
           <span className="text-xs font-bold text-emerald-900 truncate" title={matched.name}>
@@ -349,7 +349,7 @@ export function AndhraPradeshMap({
       </div>
 
       {/* Real Leaflet Map iframe */}
-      <div className="relative w-full h-[220px] bg-emerald-50">
+      <div className="relative w-full flex-1 min-h-[220px] sm:min-h-[250px] bg-emerald-50">
         <iframe
           key={`${matched.lat}-${matched.lon}-${mapType}`}
           srcDoc={mapSrcDoc}
@@ -360,7 +360,7 @@ export function AndhraPradeshMap({
       </div>
 
       {/* Footer Info */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-neutral-50/90 border-t border-neutral-100 text-[10px] text-neutral-500">
+      <div className="flex items-center justify-between px-2.5 py-1 bg-neutral-50/90 border-t border-neutral-100 text-[10px] text-neutral-500 shrink-0">
         <span className="flex items-center gap-1 truncate mr-2" title={`Real-time GIS: ${matched.subtitle}`}>
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />
           <span className="truncate">Real-time GIS: {matched.name}</span>

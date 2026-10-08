@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 
 // Use environment variable or fallback to detected host IP
 export const DEFAULT_API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'http://172.16.129.105:8000'
+  process.env.EXPO_PUBLIC_API_URL || 'http://172.16.129.86:8000'
 
 const SERVER_URL_KEY = 'agriai_server_url'
 let inMemoryBaseUrl: string = DEFAULT_API_BASE_URL.replace(/\/+$/, '')
@@ -57,6 +57,23 @@ export async function testServerConnection(url: string): Promise<{ ok: boolean; 
     }
     return { ok: false, message: `Server error HTTP ${res.status}` }
   } catch (e: any) {
+    // Try sibling port 8000 or 8001
+    let alt: string | null = null
+    if (url.includes(':8001')) alt = url.replace(':8001', ':8000')
+    else if (url.includes(':8000')) alt = url.replace(':8000', ':8001')
+    if (alt) {
+      try {
+        const cleanAlt = alt.trim().replace(/\/+$/, '')
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 3000)
+        const res = await fetch(`${cleanAlt}/api/health`, { method: 'GET', signal: controller.signal })
+        clearTimeout(timer)
+        if (res.ok) {
+          const data = await res.json()
+          return { ok: true, message: `Connected to ${cleanAlt}! (Mode: ${data.demo_mode ? 'Demo' : 'Production'})` }
+        }
+      } catch {}
+    }
     return { ok: false, message: e.message || 'Cannot reach server' }
   }
 }
@@ -141,10 +158,29 @@ export async function request<T = any>(
   try {
     res = await fetch(url, fetchOptions)
   } catch (err: any) {
-    throw new ApiError(
-      `Cannot connect to server at ${baseUrl}. ${err.message || ''}. Please check if your phone is on the same Wi-Fi as your computer.`,
-      0
-    )
+    let fallbackBaseUrl: string | null = null
+    if (baseUrl.includes(':8001')) {
+      fallbackBaseUrl = baseUrl.replace(':8001', ':8000')
+    } else if (baseUrl.includes(':8000')) {
+      fallbackBaseUrl = baseUrl.replace(':8000', ':8001')
+    }
+
+    let retrySuccess = false
+    if (fallbackBaseUrl) {
+      try {
+        const altUrl = `${fallbackBaseUrl}/api${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
+        res = await fetch(altUrl, fetchOptions)
+        setApiBaseUrl(fallbackBaseUrl).catch(() => {})
+        retrySuccess = true
+      } catch {}
+    }
+
+    if (!retrySuccess) {
+      throw new ApiError(
+        `Cannot connect to server at ${baseUrl}. ${err.message || ''}. Please check if your phone is on the same Wi-Fi as your computer.`,
+        0
+      )
+    }
   }
 
   if (!res.ok) {

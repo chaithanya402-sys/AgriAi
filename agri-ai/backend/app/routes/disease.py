@@ -68,3 +68,35 @@ async def predict_disease(
         treatment=result.get("treatment"),
         ai_model=result.get("ai_model"),
     )
+
+
+@router.get("/latest/{farm_id}")
+def get_latest_disease(
+    farm_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    farm = db.query(Farm).filter(Farm.id == farm_id, Farm.user_id == user.id).first()
+    if not farm:
+        raise HTTPException(status_code=404, detail="Farm not found")
+
+    record = (
+        db.query(DiseasePrediction)
+        .filter(DiseasePrediction.farm_id == farm_id)
+        .order_by(DiseasePrediction.created_at.desc())
+        .first()
+    )
+    if not record:
+        return {"found": False, "message": "No disease records found for this farm"}
+
+    is_healthy = "healthy" in (record.prediction or "").lower()
+    return {
+        "found": True,
+        "prediction": record.prediction,
+        "confidence": record.confidence,
+        "is_healthy": is_healthy,
+        "image_name": record.image_name,
+        "created_at": record.created_at.isoformat() if record.created_at else None,
+        "probabilities": record.probabilities,
+    }
+

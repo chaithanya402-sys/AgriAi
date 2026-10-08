@@ -161,6 +161,17 @@ export const diseaseApi = {
       body: formData,
       headers: {},
     }),
+  getLatest: (farmId: number) =>
+    request<{
+      found: boolean
+      prediction?: string
+      confidence?: number
+      is_healthy?: boolean
+      image_name?: string
+      created_at?: string
+      probabilities?: Record<string, number>
+      message?: string
+    }>(`/disease/latest/${farmId}`),
 }
 
 // ---- Risk ----

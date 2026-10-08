@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Calculator, DollarSign, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { profitApi } from '@/services/modules'
@@ -45,7 +45,7 @@ function formatField(label: string): string {
 }
 
 export function ProfitPage() {
-  const { currentFarm } = useFarm()
+  const { currentFarm, activeCrop } = useFarm()
   const { t, tCrop } = useLanguage()
   const { data: result, loading, error, run } = useAsync<ProfitResult>()
 
@@ -61,6 +61,20 @@ export function ProfitPage() {
     pesticide_cost: '',
     other_costs: '',
   })
+
+  // Synchronize active crop and farm area from shared FarmContext across all modules
+  useEffect(() => {
+    if (activeCrop) {
+      const cropName = activeCrop.rawCropName || activeCrop.cropName
+      if (cropName) {
+        setForm((prev) => ({
+          ...prev,
+          crop: prev.crop || cropName,
+          area_ha: prev.area_ha || (activeCrop.area ? String(activeCrop.area) : currentFarm?.total_area ? String(currentFarm.total_area) : ''),
+        }))
+      }
+    }
+  }, [activeCrop, currentFarm])
 
   const setField = (field: string, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }))

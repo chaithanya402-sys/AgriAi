@@ -275,7 +275,7 @@ export function FertilizerPage() {
       {/* ============================================================== */}
       <div className="pointer-events-none absolute -top-8 -left-8 -right-8 h-48 overflow-hidden opacity-30 select-none -z-10">
         <img
-          src="/agri-bg/bg-01.webp"
+          src="/agri-bg/plant-banner-bg.png"
           alt=""
           className="h-full w-full object-cover object-top mask-image-linear-to-b"
           onError={(e) => {

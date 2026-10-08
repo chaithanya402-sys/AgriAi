@@ -30,6 +30,7 @@ import {
   getAllCatalogCropsList,
   getCropDetails,
   CROP_CATEGORIES,
+  matchCropCategory,
   type CropCategory,
 } from '@/data/cropDetailsData'
 import {
@@ -140,7 +141,7 @@ export function CropPage() {
   const [selectedCropModal, setSelectedCropModal] = useState<{ crop: CropOption; rank: number } | null>(null)
 
   // Filters & Pagination State
-  const [selectedCategory, setSelectedCategory] = useState<'all' | CropCategory>('all')
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -392,8 +393,8 @@ export function CropPage() {
   const filteredCrops = useMemo(() => {
     let list = fullCropList
 
-    if (selectedCategory !== 'all') {
-      list = list.filter((c) => c.category === selectedCategory)
+    if (selectedCategory && selectedCategory !== 'all') {
+      list = list.filter((c) => matchCropCategory(c.category, selectedCategory))
     }
 
     if (searchQuery.trim()) {
@@ -407,8 +408,8 @@ export function CropPage() {
           c.crop.toLowerCase().includes(q) ||
           c.category.toLowerCase().includes(q) ||
           c.reason.toLowerCase().includes(q) ||
-          aliasMatch ||
-          subCatMatch
+          Boolean(aliasMatch) ||
+          Boolean(subCatMatch)
         )
       })
     }
@@ -750,18 +751,26 @@ export function CropPage() {
             const translatedLabel =
               cat.key === 'all'
                 ? t('crop.categories.all', 'All Crops')
-                : cat.key === 'Cereals'
+                : cat.key === 'cereals_millets'
                 ? t('crop.categories.cereals', 'Cereals & Millets')
+                : cat.key === 'Millets'
+                ? t('crop.categories.millets', 'Millets')
                 : cat.key === 'Pulses'
-                ? t('crop.categories.pulses', 'Pulses')
+                ? t('crop.categories.pulses', 'Pulses & Legumes')
                 : cat.key === 'Oilseeds'
                 ? t('crop.categories.oilseeds', 'Oilseeds')
+                : cat.key === 'Fiber Crops'
+                ? t('crop.categories.fiber', 'Fiber Crops')
+                : cat.key === 'cash_spices'
+                ? t('crop.categories.cash', 'Cash Crops & Spices')
                 : cat.key === 'Vegetables'
                 ? t('crop.categories.vegetables', 'Vegetables')
                 : cat.key === 'Fruits'
-                ? t('crop.categories.fruits', 'Fruits')
-                : (cat.key as string) === 'Commercial Crops' || (cat.key as string) === 'Cash Crops'
-                ? t('crop.categories.cash', 'Commercial & Cash Crops')
+                ? t('crop.categories.fruits', 'Fruits & Orchard')
+                : cat.key === 'Spices'
+                ? t('crop.categories.spices', 'Spices')
+                : cat.key === 'Plantation'
+                ? t('crop.categories.plantation', 'Plantation')
                 : cat.label
             return (
               <button
@@ -786,9 +795,35 @@ export function CropPage() {
       </div>
 
       {/* ============================================================== */}
-      {/* 3. CROP LIST (LIST TABLE OR CARDS GRID)                         */}
+      {/* 3. CROP LIST (EMPTY STATE, LIST TABLE, OR CARDS GRID)           */}
       {/* ============================================================== */}
-      {viewMode === 'list' ? (
+      {filteredCrops.length === 0 ? (
+        <div className="rounded-2xl border border-neutral-200 bg-white p-12 text-center shadow-xs">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-400">
+            <Sprout className="h-7 w-7 text-neutral-400" />
+          </div>
+          <h3 className="text-base font-bold text-neutral-800">
+            {t('crop.noCropsFound', 'No crops found in this category')}
+          </h3>
+          <p className="mt-1 text-xs text-neutral-500 max-w-sm mx-auto">
+            {t(
+              'crop.noCropsHint',
+              'No crops match your current category and search filters. Try switching to "All Crops" or clearing your search query.'
+            )}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedCategory('all')
+              setSearchQuery('')
+              setCurrentPage(1)
+            }}
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#123B22] text-white text-xs font-bold hover:bg-[#1a5230] transition-colors cursor-pointer"
+          >
+            <span>{t('crop.resetFilters', 'Reset Filters')}</span>
+          </button>
+        </div>
+      ) : viewMode === 'list' ? (
         <div className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white shadow-xs">
           <table className="w-full text-left text-sm">
             <thead className="bg-neutral-50 text-[11px] font-extrabold text-neutral-500 uppercase tracking-wider border-b border-neutral-200">

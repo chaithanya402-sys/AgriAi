@@ -27,3 +27,6 @@ class RiskAssessmentResponse(BaseModel):
     top_risks: List[str]
     recommendations: List[str]
     demo_mode: bool
+    high_risk_count: Optional[int] = 0
+    moderate_risk_count: Optional[int] = 0
+    low_risk_count: Optional[int] = 0

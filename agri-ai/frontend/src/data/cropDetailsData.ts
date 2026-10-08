@@ -90,22 +90,76 @@ export interface CropDetailInfo {
   productionTonnes: number
 }
 
-export const CROP_CATEGORIES: Array<{ key: 'all' | CropCategory; label: string }> = [
-  { key: 'all', label: 'All' },
-  { key: 'Cereals', label: 'Cereals' },
+export interface CropCategoryFilterItem {
+  key: string
+  label: string
+}
+
+export const CROP_CATEGORIES: CropCategoryFilterItem[] = [
+  { key: 'all', label: 'All Crops' },
+  { key: 'cereals_millets', label: 'Cereals & Millets' },
   { key: 'Millets', label: 'Millets' },
-  { key: 'Pulses', label: 'Pulses' },
+  { key: 'Pulses', label: 'Pulses & Legumes' },
   { key: 'Oilseeds', label: 'Oilseeds' },
   { key: 'Fiber Crops', label: 'Fiber Crops' },
-  { key: 'Commercial Crops', label: 'Commercial Crops' },
+  { key: 'cash_spices', label: 'Cash Crops & Spices' },
   { key: 'Vegetables', label: 'Vegetables' },
-  { key: 'Fruits', label: 'Fruits' },
+  { key: 'Fruits', label: 'Fruits & Orchard' },
   { key: 'Spices', label: 'Spices' },
   { key: 'Plantation', label: 'Plantation' },
   { key: 'Flowers', label: 'Flowers' },
   { key: 'Medicinal & Aromatic', label: 'Medicinal & Aromatic' },
   { key: 'Fodder', label: 'Fodder' },
 ]
+
+/**
+ * Robust category matching function mapping category filter buttons to genuine crop categories
+ */
+export function matchCropCategory(cropCategory: string, filterKey: string): boolean {
+  if (!filterKey || filterKey === 'all') return true
+  const lowerFilter = filterKey.toLowerCase().trim()
+  const lowerCat = (cropCategory || '').toLowerCase().trim()
+
+  if (lowerFilter === 'cereals_millets' || lowerFilter === 'cereals & millets') {
+    return lowerCat === 'cereals' || lowerCat === 'millets'
+  }
+  if (
+    lowerFilter === 'cash_spices' ||
+    lowerFilter === 'cash crops & spices' ||
+    lowerFilter === 'commercial & cash crops' ||
+    lowerFilter === 'commercial crops'
+  ) {
+    return lowerCat === 'commercial crops' || lowerCat === 'spices'
+  }
+  if (lowerFilter === 'pulses' || lowerFilter === 'pulses & legumes') {
+    return lowerCat === 'pulses'
+  }
+  if (lowerFilter === 'fruits' || lowerFilter === 'fruits & orchard') {
+    return lowerCat === 'fruits'
+  }
+  if (lowerFilter === 'fiber crops') {
+    return lowerCat === 'fiber crops'
+  }
+  if (lowerFilter === 'oilseeds') {
+    return lowerCat === 'oilseeds'
+  }
+  if (lowerFilter === 'vegetables') {
+    return lowerCat === 'vegetables'
+  }
+  if (lowerFilter === 'millets') {
+    return lowerCat === 'millets'
+  }
+  if (lowerFilter === 'spices') {
+    return lowerCat === 'spices'
+  }
+  if (lowerFilter === 'plantation') {
+    return lowerCat === 'plantation'
+  }
+  if (lowerFilter === 'cereals') {
+    return lowerCat === 'cereals'
+  }
+  return lowerCat === lowerFilter
+}
 
 export const CROP_DETAILS_MAP: Record<string, CropDetailInfo> = {
   Soybean: {
@@ -3159,75 +3213,17 @@ export const CROP_DETAILS_MAP: Record<string, CropDetailInfo> = {
 function getRawCropDetails(cropName: string): CropDetailInfo {
   if (!cropName) return CROP_DETAILS_MAP.Soybean
 
-  const clean = cropName.trim()
-  if (CROP_DETAILS_MAP[clean]) {
-    return CROP_DETAILS_MAP[clean]
-  }
-
-  const lower = clean.toLowerCase()
-  for (const [key, details] of Object.entries(CROP_DETAILS_MAP)) {
-    if (
-      key.toLowerCase() === lower ||
-      details.displayName.toLowerCase().includes(lower) ||
-      lower.includes(key.toLowerCase())
-    ) {
-      return details
-    }
-  }
-
-  // Aliases
-  if (lower.includes('soya') || lower.includes('soy')) return CROP_DETAILS_MAP.Soybean
-  if (lower.includes('paddy') || lower.includes('rice')) return CROP_DETAILS_MAP.Paddy
-  if (lower.includes('wheat')) return CROP_DETAILS_MAP.Wheat
-  if (lower.includes('corn') || lower.includes('maize')) return CROP_DETAILS_MAP.Maize
-  if (lower.includes('toor') || lower.includes('arhar') || lower.includes('pigeon'))
-    return CROP_DETAILS_MAP['Pigeon Pea']
-  if (lower.includes('chana') || lower.includes('gram') || lower.includes('chickpea'))
-    return CROP_DETAILS_MAP.Chickpea
-  if (lower.includes('moong') || lower.includes('green gram')) return CROP_DETAILS_MAP['Green Gram']
-  if (lower.includes('urad') || lower.includes('black gram')) return CROP_DETAILS_MAP['Black Gram']
-  if (lower.includes('masoor') || lower.includes('lentil')) return CROP_DETAILS_MAP.Lentil
-  if (lower.includes('groundnut') || lower.includes('peanut')) return CROP_DETAILS_MAP.Groundnut
-  if (lower.includes('mustard') || lower.includes('sarson')) return CROP_DETAILS_MAP.Mustard
-  if (lower.includes('til') || lower.includes('sesame')) return CROP_DETAILS_MAP.Sesame
-  if (lower.includes('sunflower')) return CROP_DETAILS_MAP.Sunflower
-  if (lower.includes('safflower') || lower.includes('kardi')) return CROP_DETAILS_MAP.Safflower
-  if (lower.includes('castor')) return CROP_DETAILS_MAP.Castor
-  if (lower.includes('jowar') || lower.includes('sorghum')) return CROP_DETAILS_MAP.Sorghum
-  if (lower.includes('bajra') || lower.includes('pearl')) return CROP_DETAILS_MAP.Bajra
-  if (lower.includes('ragi') || lower.includes('finger')) return CROP_DETAILS_MAP.Ragi
-  if (lower.includes('barley') || lower.includes('jau')) return CROP_DETAILS_MAP.Barley
-  if (lower.includes('oats')) return CROP_DETAILS_MAP.Oats
-  if (lower.includes('potato') || lower.includes('aloo')) return CROP_DETAILS_MAP.Potato
-  if (lower.includes('tomato')) return CROP_DETAILS_MAP.Tomato
-  if (lower.includes('onion') || lower.includes('pyaz')) return CROP_DETAILS_MAP.Onion
-  if (lower.includes('chilli') || lower.includes('pepper') || lower.includes('mirchi'))
-    return CROP_DETAILS_MAP.Chilli
-  if (lower.includes('turmeric') || lower.includes('haldi')) return CROP_DETAILS_MAP.Turmeric
-  if (lower.includes('ginger') || lower.includes('adrak')) return CROP_DETAILS_MAP.Ginger
-  if (lower.includes('coriander') || lower.includes('dhaniya')) return CROP_DETAILS_MAP.Coriander
-  if (lower.includes('banana')) return CROP_DETAILS_MAP.Banana
-  if (lower.includes('mango')) return CROP_DETAILS_MAP.Mango
-  if (lower.includes('coconut')) return CROP_DETAILS_MAP.Coconut
-  if (lower.includes('black pepper')) return CROP_DETAILS_MAP['Black Pepper']
-  if (lower.includes('cardamom')) return CROP_DETAILS_MAP.Cardamom
-  if (lower.includes('rubber')) return CROP_DETAILS_MAP.Rubber
-  if (lower.includes('sugarcane') || lower.includes('cane')) return CROP_DETAILS_MAP.Sugarcane
-  if (lower.includes('tea')) return CROP_DETAILS_MAP.Tea
-  if (lower.includes('coffee')) return CROP_DETAILS_MAP.Coffee
-  if (lower.includes('cotton')) return CROP_DETAILS_MAP.Cotton
-  if (lower.includes('jute')) return CROP_DETAILS_MAP.Jute
-  if (lower.includes('pulse')) return CROP_DETAILS_MAP.Pulses
-
-  // Check central catalog via normalized crop ID
+  // 1. Check central catalog via normalized crop ID first (authoritative source for all 97 crops)
   const canonicalId = normalizeCropName(cropName)
   const catalogItem = cropCatalog[canonicalId]
   if (catalogItem) {
+    const canonicalImage = getCropImage(catalogItem.id) || getCropImage(canonicalId) || catalogItem.image
     return {
       name: catalogItem.name,
       displayName: catalogItem.displayName,
       category: catalogItem.category,
-      image: catalogItem.image,
+      image: canonicalImage,
+      podGraphic: CROP_DETAILS_MAP[catalogItem.name]?.podGraphic || CROP_DETAILS_MAP[catalogItem.displayName]?.podGraphic,
       fallbackIcon: catalogItem.fallbackIcon,
       description: catalogItem.description,
       purpose: catalogItem.purpose,
@@ -3248,6 +3244,22 @@ function getRawCropDetails(cropName: string): CropDetailInfo {
       matchScore: catalogItem.matchScore,
       riskLevel: catalogItem.riskLevel,
       productionTonnes: catalogItem.productionTonnes,
+    }
+  }
+
+  // 2. Direct exact match in CROP_DETAILS_MAP
+  const clean = cropName.trim()
+  if (CROP_DETAILS_MAP[clean]) {
+    return CROP_DETAILS_MAP[clean]
+  }
+
+  const lower = clean.toLowerCase()
+  for (const [key, details] of Object.entries(CROP_DETAILS_MAP)) {
+    if (
+      key.toLowerCase() === lower ||
+      details.displayName.toLowerCase() === lower
+    ) {
+      return details
     }
   }
 
@@ -3272,8 +3284,38 @@ export function getAll39CropsList(): CropDetailInfo[] {
 }
 
 /**
- * Returns all crops in the central catalog converted to CropDetailInfo
+ * Returns all crops in the central catalog converted directly to CropDetailInfo
+ * guaranteeing 0 duplicates and 100% accurate categories for all 97 Indian crops.
  */
 export function getAllCatalogCropsList(): CropDetailInfo[] {
-  return getAllCatalogCrops().map((item) => getCropDetails(item.id))
+  return getAllCatalogCrops().map((item) => {
+    const canonicalImage = getCropImage(item.id) || item.image
+    return {
+      name: item.name,
+      displayName: item.displayName,
+      category: item.category,
+      image: canonicalImage,
+      podGraphic: CROP_DETAILS_MAP[item.name]?.podGraphic || CROP_DETAILS_MAP[item.displayName]?.podGraphic,
+      fallbackIcon: item.fallbackIcon,
+      description: item.description,
+      purpose: item.purpose,
+      majorUses: item.commonUses,
+      suitabilitySummary: item.suitabilitySummary,
+      soilRequirements: item.soilRequirements,
+      climateRequirements: item.climateRequirements,
+      farmingRequirements: item.farmingRequirements,
+      advantages: item.advantages,
+      considerations: item.considerations,
+      benchmarkYield: item.benchmarkYield,
+      districtAvgYield: item.districtAvgYield,
+      stateAvgYield: item.stateAvgYield,
+      benchmarkRevenue: item.benchmarkRevenue,
+      benchmarkCost: item.benchmarkCost,
+      benchmarkProfit: item.benchmarkProfit,
+      benchmarkROI: item.benchmarkROI,
+      matchScore: item.matchScore,
+      riskLevel: item.riskLevel,
+      productionTonnes: item.productionTonnes,
+    }
+  })
 }
